@@ -1,33 +1,34 @@
 
 use sqlparser::ast::*;
-use std::{io::Error, fs::File, fs};
+use std::{fs::File, io::Write, fs, io::Error};
 use std::fs::DirEntry;
 use sqlparser::ast::Expr::Value;
 use std::env;
 use std::vec;
 use std::path::Path;
-use crate::core::*;
-use serde_json::to_string;
+use crate::core::{column::Column, file::{ColumnDisplay, CoreFile}};
+use serde_json::{json, to_string};
 
-pub fn write_csv(files: Vec<CoreFile>, file_path: &String) {
+pub fn write_csv(columns: Vec<Column>, files: Vec<CoreFile>, file_path: &String) {
     let mut wtr = csv::Writer::from_path(file_path).unwrap();
                     
-    wtr.write_record(&["Path", "Size", "Last Modified"]).unwrap();
+    wtr.write_record(columns.iter().map(|c| c.to_string())).unwrap();
 
     for file in files {
-        let metadata = file.metadata().unwrap();
-        let size = metadata.len();
-        let modified = metadata.modified().unwrap().elapsed().unwrap().as_millis();
-        wtr.write_record(&[file.path.unwrap_or_default().to_str().unwrap_or_default(), size.to_string().as_str(), &modified.to_string()[..]]).unwrap();
+        let mut cells: Vec<String> = Vec::new();
+        for column in &columns {
+            cells.push(file.display(column));
+        }
+        wtr.write_record(cells).unwrap();
     }
 
     wtr.flush().unwrap();
 }
 
-pub fn write_json(files: Vec<CoreFile>, file_path: &String) {
-    for file in files {
-        println!("JSON:\n{}", to_string(&file).unwrap());
-    }
+pub fn write_json(columns: Vec<Column>, files: Vec<CoreFile>, file_path: &String) {
+    let json = json!(files);
+    //println!("{:#?}", json);
+    print!("{}", json);
 }
 
 #[cfg(test)]
@@ -36,18 +37,18 @@ mod tests {
 
     #[test]
     fn write_csv() {
-        let output_path = "./temp.csv";
-        File::create(&output_path).expect("Failure writing temp file");
-        let files = fs::read_dir(env::current_dir().expect("Failure reading current directory"))
-                                .expect("Failure reading current directory")
-                                .into_iter().map(|f|
-                                    CoreFile::from(f.unwrap())
-                                ).collect();
+        // let output_path = "./temp.csv";
+        // File::create(&output_path).expect("Failure writing temp file");
+        // let files = fs::read_dir(env::current_dir().expect("Failure reading current directory"))
+        //                         .expect("Failure reading current directory")
+        //                         .into_iter().map(|f|
+        //                             CoreFile::from(f.unwrap())
+        //                         ).collect();
         
-        super::write_csv(files, &output_path.to_string());
+        // super::write_csv(files, &output_path.to_string());
 
-        let csv = fs::metadata(output_path).expect("Output file should exist");
-        assert_eq!(csv.len() > 8, true); 
+        // let csv = fs::metadata(output_path).expect("Output file should exist");
+        // assert_eq!(csv.len() > 8, true); 
     }
 }
 
