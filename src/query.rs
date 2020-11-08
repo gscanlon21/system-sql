@@ -1,7 +1,7 @@
 
 use sqlparser::{ast::*, dialect::MsSqlDialect, parser::Parser, test_utils};
-use std::{fmt::Display, fs::{self, DirEntry}, str::FromStr};
-use crate::core::{column::Column, file::ColumnDisplay, dialect::CoreDialect, error::CoreError, file::CoreFile};
+use std::{fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
+use crate::core::{column::Column, dialect::CoreDialect, error::CoreError, file::ColumnDisplay, file::{ColumnValue, CoreFile}, value::CoreValue, file::Visitor};
 use crate::display::*;
 use strum::IntoEnumIterator;
 
@@ -53,36 +53,40 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
 
             return Ok(());
         }
-        Statement::Copy { table_name, columns, values } => { Err(CoreError::from("Unimplemented")) }
+        Statement::Copy { table_name, columns, values } => { unimplemented!() }
         Statement::Update { table_name, assignments, selection } => { 
             let files = consume_table_name(&table_name.0[0].value);
+
+            if let Some(expr) = selection {
+                for file in &files.unwrap() {
+                    println!("{:#?}", expr.clone());
+                    let column = Some(file).visit_expr(&expr);
+                    println!("{:#?}", column);
+                }
+            }
 
             for assignment in &assignments {
                 
             }
 
-            if let Some(expr) = selection {
-                consume_expr(expr);
-            }
-
             Ok(())
         }
-        Statement::Delete { table_name, selection } => { Err(CoreError::from("Unimplemented")) }
-        Statement::Drop { object_type, if_exists, names, cascade } => { Err(CoreError::from("Unimplemented")) }
-        Statement::SetVariable { local, variable, value } => { Err(CoreError::from("Unimplemented")) }
-        Statement::ShowVariable { variable } => { Err(CoreError::from("Unimplemented")) }
+        Statement::Delete { table_name, selection } => { unimplemented!() }
+        Statement::Drop { object_type, if_exists, names, cascade } => { unimplemented!() }
+        Statement::SetVariable { local, variable, value } => { unimplemented!() }
+        Statement::ShowVariable { variable } => { unimplemented!() }
         Statement::ShowColumns { extended, full, table_name, filter } => { 
             let columns = Column::iterator().map(|c| c.to_string()).collect::<Vec<String>>();
             println!("Columns: {}", columns.join(", "));
 
             Ok(())
         }
-        Statement::StartTransaction { modes } => { Err(CoreError::from("Unimplemented")) }
-        Statement::SetTransaction { modes } => { Err(CoreError::from("Unimplemented")) }
-        Statement::Commit { chain } => { Err(CoreError::from("Unimplemented")) }
-        Statement::Rollback { chain } => { Err(CoreError::from("Unimplemented")) }
-        Statement::Assert { condition, message } => { Err(CoreError::from("Unimplemented")) }
-        _ => { Err(CoreError::from("Not implemented")) }
+        Statement::StartTransaction { modes } => { unimplemented!() }
+        Statement::SetTransaction { modes } => { unimplemented!() }
+        Statement::Commit { chain } => { unimplemented!() }
+        Statement::Rollback { chain } => { unimplemented!() }
+        Statement::Assert { condition, message } => { unimplemented!() }
+        _ => { unimplemented!() }
     }
 }
 
@@ -98,9 +102,9 @@ pub fn consume_query(query: Query) -> Result<Vec<CoreFile>, CoreError> {
 
             return Ok(files);
         }
-        SetExpr::Query(_) => { Err(CoreError::from("Unimplemented")) }
-        SetExpr::SetOperation { op, all, left, right } => { Err(CoreError::from("Unimplemented")) }
-        SetExpr::Values(_) => { Err(CoreError::from("Unimplemented")) }
+        SetExpr::Query(_) => { unimplemented!() }
+        SetExpr::SetOperation { op, all, left, right } => { unimplemented!() }
+        SetExpr::Values(_) => { unimplemented!() }
     }
 }
 
@@ -153,14 +157,7 @@ pub fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
         }
 
         for projection in select.projection {
-            match projection {
-                SelectItem::UnnamedExpr(expr) => {
-                    consume_expr(expr);
-                }
-                SelectItem::ExprWithAlias { expr, alias } => {}
-                SelectItem::QualifiedWildcard(_) => {}
-                SelectItem::Wildcard => {}
-            }
+            //consume_select_item(projction);
         }
 
         return Ok(files)
@@ -182,77 +179,137 @@ pub fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
     return Err(CoreError::from("There's nothing here!"));
 }
 
-// struct ConsumeExpr {
-//     columns: Vec<Column> 
+// fn consume_select_item(select_item: SelectItem) {
+//     match select_item {
+//         SelectItem::UnnamedExpr(expr) => {
+//             consume_expr(expr, None);
+//         }
+//         SelectItem::ExprWithAlias { expr, alias } => {}
+//         SelectItem::QualifiedWildcard(_) => {}
+//         SelectItem::Wildcard => {}
+//     }
 // }
 
-fn consume_expr_2(expr: Expr, f: &dyn Fn(CoreFile) -> Option<CoreFile>) {
+// fn consume_expr_value(value: Value) -> Result<ExprResult, CoreError> {
+//     match value {
+//         Value::Number(numString) => { Ok(ExprResult::Result(CoreValue::from(numString))) }
+//         Value::SingleQuotedString(string) => { Ok(ExprResult::Result(CoreValue::from(string))) }
+//         Value::NationalStringLiteral(string) => { panic!("Not implemented") }
+//         Value::HexStringLiteral(string) => { panic!("Not implemented") }
+//         Value::Boolean(bool) => { panic!("Not implemented") }
+//         Value::Interval { value, leading_field, leading_precision, last_field, fractional_seconds_precision } => {
+//             panic!("Unimplemented")
+//         }
+//         Value::Null => { panic!("Not implemented") }
+//     }
+// }
 
-}
+// fn consume_expr_ident(ident: Ident, core_file: Option<&CoreFile>) -> Result<ExprResult, CoreError> {
+//     // match Column::from_str(ident.value.as_str()) {
+//     //     Ok(column) => { Ok(ExprResult::Select(Box::new(move |c| c.value(&column)))) }
+//     //     Err(e) => { Err(CoreError::from(e)) }
+//     // }
+// }
 
-fn consume_expr(expr: Expr) -> Result<Vec<String>, CoreError> {
-    match expr {
-        Expr::Identifier(ident) => {
-            match Column::from_str(ident.value.as_str()) {
-                Ok(column) => { Ok(vec![column.to_string()]) }
-                Err(e) => { Err(CoreError::from(e)) }
-            }
-        }
-        Expr::Wildcard =>{ Err(CoreError::from("Unimplemented")) }
-        Expr::QualifiedWildcard(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::CompoundIdentifier(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::IsNull(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::IsNotNull(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::InList { expr, list, negated } => { Err(CoreError::from("Unimplemented")) }
-        Expr::InSubquery { expr, subquery, negated } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Between { expr, negated, low, high } => { Err(CoreError::from("Unimplemented")) }
-        Expr::BinaryOp { left, op, right } =>{ 
-            let left = consume_expr(*left).unwrap();
-            let right = consume_expr(*right).unwrap();
-            consume_op(left, op, right);
-            
 
-            Err(CoreError::from(()))
-        }
-        Expr::UnaryOp { op, expr } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Cast { expr, data_type } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Extract { field, expr } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Collate { expr, collation } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Nested(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::Value(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::TypedString { data_type, value } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Function(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::Case { operand, conditions, results, else_result } => { Err(CoreError::from("Unimplemented")) }
-        Expr::Exists(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::Subquery(_) => { Err(CoreError::from("Unimplemented")) }
-        Expr::ListAgg(_) => { Err(CoreError::from("Unimplemented")) }
-    }
-}
+// enum ExprResult {
+//     Select(Box<dyn Fn(&CoreFile) -> CoreValue>),
+//     Assignment(CoreFile),
+//     Result(CoreValue),
+//     Filter(bool),
+// }
 
-fn consume_op<T>(left: T, op: BinaryOperator, right: T) -> bool
-    where T : PartialEq {
-    match op {
-        BinaryOperator::Plus => { false }
-        BinaryOperator::Minus => { false }
-        BinaryOperator::Multiply => { false }
-        BinaryOperator::Divide => { false }
-        BinaryOperator::Modulus => { false }
-        BinaryOperator::StringConcat => { false }
-        BinaryOperator::Gt => { false }
-        BinaryOperator::Lt => { false }
-        BinaryOperator::GtEq => { false }
-        BinaryOperator::LtEq => { false }
-        BinaryOperator::Eq => { left == right }
-        BinaryOperator::NotEq => { left != right }
-        BinaryOperator::And => { false }
-        BinaryOperator::Or => { false }
-        BinaryOperator::Like => { false }
-        BinaryOperator::NotLike => { false }
-        BinaryOperator::BitwiseOr => { false }
-        BinaryOperator::BitwiseAnd => { false }
-        BinaryOperator::BitwiseXor => { false }
-    }
-}
+// impl fmt::Debug for ExprResult {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             ExprResult::Select(_) => { write!(f, "SELECT") }
+//             ExprResult::Assignment(a) => { write!(f, "{:#?}", a) }
+//             ExprResult::Result(r) => { write!(f, "{:#?}", r) }
+//             ExprResult::Filter(b) => { write!(f, "{:#?}", b) }
+//         }
+//     }
+// }
+
+// fn consume_expr(expr: Expr, core_file: Option<&CoreFile>) -> Result<ExprResult, CoreError> {
+//     match expr {
+//         Expr::Identifier(ident) => { consume_expr_ident(ident, core_file) }
+//         Expr::Wildcard =>{ unimplemented!() }
+//         Expr::QualifiedWildcard(_) => { unimplemented!() }
+//         Expr::CompoundIdentifier(idents) => { 
+//             for ident in idents {
+//                 consume_expr_ident(ident, core_file);
+//             }                     
+
+//             Err(CoreError::from(()))
+//         }
+//         Expr::IsNull(_) => { unimplemented!() }
+//         Expr::IsNotNull(_) => { unimplemented!() }
+//         Expr::InList { expr, list, negated } => { unimplemented!() }
+//         Expr::InSubquery { expr, subquery, negated } => { unimplemented!() }
+//         Expr::Between { expr, negated, low, high } => { unimplemented!() }
+//         Expr::BinaryOp { left, op, right } =>{ 
+//             // Get value from Ident
+//             let left = consume_expr(*left, core_file).unwrap();
+//             println!("binary_op::left: {:#?}", left);
+
+//             // Get value from Value
+//             let right = consume_expr(*right, core_file).unwrap();
+//             println!("binary_op::right: {:#?}", right);
+
+//             match (left, right) {
+//                 (ExprResult::Result(a), ExprResult::Result(b)) => { 
+//                     Ok(ExprResult::Result(consume_op(a, op, b).unwrap())) 
+//                 }
+//                 (ExprResult::Select(a), ExprResult::Result(b)) => { 
+//                     Ok(ExprResult::Result(consume_op(a(core_file.unwrap()), op, b).unwrap())) 
+//                 }
+//                 (ExprResult::Result(a), ExprResult::Select(b)) => { 
+//                     Ok(ExprResult::Result(consume_op(a, op, b(core_file.unwrap())).unwrap())) 
+//                 }
+//                 (ExprResult::Select(a), ExprResult::Select(b)) => { 
+//                     Ok(ExprResult::Result(consume_op(a(core_file.unwrap()), op, b(core_file.unwrap())).unwrap())) 
+//                 }
+//                 _ => { Err(CoreError::from(())) }
+//             }
+//         }
+//         Expr::UnaryOp { op, expr } => { unimplemented!() }
+//         Expr::Cast { expr, data_type } => { unimplemented!() }
+//         Expr::Extract { field, expr } => { unimplemented!() }
+//         Expr::Collate { expr, collation } => { unimplemented!() }
+//         Expr::Nested(_) => { unimplemented!() }
+//         Expr::Value(value) => { consume_expr_value(value) }
+//         Expr::TypedString { data_type, value } => { unimplemented!() }
+//         Expr::Function(_) => { unimplemented!() }
+//         Expr::Case { operand, conditions, results, else_result } => { unimplemented!() }
+//         Expr::Exists(_) => { unimplemented!() }
+//         Expr::Subquery(_) => { unimplemented!() }
+//         Expr::ListAgg(_) => { unimplemented!() }
+//     }
+// }
+
+// fn consume_op(left: CoreValue, op: BinaryOperator, right: CoreValue) -> Option<CoreValue> {
+//     match op {
+//         BinaryOperator::Plus => { Some(left + right) }
+//         BinaryOperator::Minus => { left - right }
+//         BinaryOperator::Multiply => { left * right }
+//         BinaryOperator::Divide => { left / right }
+//         BinaryOperator::Modulus => { None }
+//         BinaryOperator::StringConcat => { None }
+//         BinaryOperator::Gt => { None }
+//         BinaryOperator::Lt => { None }
+//         BinaryOperator::GtEq => { None }
+//         BinaryOperator::LtEq => { None }
+//         BinaryOperator::Eq => { Some(CoreValue::from(left == right)) }
+//         BinaryOperator::NotEq => { Some(CoreValue::from(left != right)) }
+//         BinaryOperator::And => { None }
+//         BinaryOperator::Or => { None }
+//         BinaryOperator::Like => { None }
+//         BinaryOperator::NotLike => { None }
+//         BinaryOperator::BitwiseOr => { None }
+//         BinaryOperator::BitwiseAnd => { None }
+//         BinaryOperator::BitwiseXor => { None }
+//     }
+// }
 
 fn consume_relation(relation: TableFactor) -> Result<Vec<CoreFile>, CoreError> {
     let mut files: Vec<CoreFile> = Vec::new();

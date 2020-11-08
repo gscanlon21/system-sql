@@ -4,6 +4,34 @@ use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
 
 
+#[derive(Debug, AsStaticStr, EnumIter, PartialEq, PartialOrd)]
+pub enum FileColumn {
+    Name(Option<String>),
+    Path(Option<PathBuf>),
+    FileType(Option<String>),
+    FileExtension(Option<String>),
+    Size(Option<u64>),
+    AbsolutePath(Option<PathBuf>),
+    Created(Option<u32>)
+}
+
+impl std::ops::Add for FileColumn {
+    type Output = FileColumn;
+    fn add(self, rhs: FileColumn) -> Self::Output {
+        match (self, rhs) {
+            (FileColumn::Size(Some(a)), FileColumn::Size(Some(b))) => { FileColumn::Size(Some(a + b)) }
+            _ => { unimplemented!() }
+        }
+    }
+}
+
+impl fmt::Display for FileColumn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+
 #[derive(Debug, AsStaticStr, EnumIter)]
 pub enum Column {
     Name,
