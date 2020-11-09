@@ -3,6 +3,13 @@ use sqlparser::{parser::ParserError, ast::Query};
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
 
+pub trait WithValue<T> {
+    fn value() -> T;
+}
+
+trait FileColumnTrait {
+
+}
 
 #[derive(Debug, AsStaticStr, EnumIter, PartialEq, PartialOrd)]
 pub enum FileColumn {
@@ -14,6 +21,7 @@ pub enum FileColumn {
     AbsolutePath(Option<PathBuf>),
     Created(Option<u32>)
 }
+
 
 impl std::ops::Add for FileColumn {
     type Output = FileColumn;

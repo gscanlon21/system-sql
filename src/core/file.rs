@@ -2,60 +2,9 @@ use std::{cmp::Ordering, error::Error, ffi::OsString, fmt::{Debug, Display}, fmt
 use sqlparser::{ast::{BinaryOperator, Expr, Ident, Query}, parser::ParserError};
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
-use super::{column::Column, error::CoreError, value::CoreValue, column::FileColumn};
+use super::{column::Column, error::CoreError, column::FileColumn};
 
 impl Error for CoreError {}
-
-
-pub trait Visitor<T> {
-    fn visit_expr(&mut self, e: &Expr) -> T;
-}
-
-// impl Visitor<CoreFile> for CoreFile { 
-//     fn visit_expr(&mut self, e: &Expr) -> CoreFile {
-//         match e {
-//             Expr::Identifier(ident) => {
-//                 unimplemented!()
-//             }
-//             Expr::BinaryOp { left, op, right } => {
-//                 match op {
-//                     BinaryOperator::Plus => { self.visit_expr(&left) + self.visit_expr(&right) }
-//                     BinaryOperator::Eq => { 
-//                         let left = self.visit_expr(&left);
-//                         let bool = left == self.visit_expr(&right);
-//                         left
-//                     }
-//                     _ => {unimplemented!() }
-//                 }
-//             }
-//             _ => { unimplemented!() }
-//         }       
-//     }
-// }
-
-impl Visitor<FileColumn> for Option<&CoreFile> { 
-    fn visit_expr(&mut self, e: &Expr) -> FileColumn {
-        match e {
-            Expr::Identifier(ident) => {
-                unimplemented!()//self.value_absolute_path()
-            }
-            Expr::BinaryOp { left, op, right } => {
-                match op {
-                    BinaryOperator::Plus => { self.visit_expr(&left) + self.visit_expr(&right) }
-                    BinaryOperator::Eq => { 
-                        let left = self.visit_expr(&left);
-                        if left != self.visit_expr(&right) {
-                            *self = None   
-                        }
-                        left
-                    }
-                    _ => {unimplemented!() }
-                }
-            }
-            _ => { unimplemented!() }
-        }       
-    }
-}
 
 pub trait ColumnDisplay {
     fn display(&self, column: &Column) -> String {
@@ -80,25 +29,25 @@ pub trait ColumnDisplay {
 }
 
 pub trait ColumnValue {
-    fn value(&self, column: &Column) -> FileColumn {
+    fn value(&self, column: &Column) -> String {
         match column {
-            Column::Size => { self.value_size() }
-            Column::Path => { self.value_path() }
-            Column::AbsolutePath => { self.value_absolute_path() }
-            Column::FileType => { self.value_file_type() }
-            Column::FileExtension => { self.value_file_extension() }
-            Column::Name => { self.value_name() }
-            Column::Created => { self.value_created() }
+            Column::Size => { self.value_size().unwrap().to_string() }
+            Column::Path => { self.value_path().unwrap().to_string_lossy().to_string() }
+            Column::AbsolutePath => { self.value_absolute_path().unwrap().to_string_lossy().to_string() }
+            Column::FileType => { self.value_file_type().unwrap() }
+            Column::FileExtension => { self.value_file_extension().unwrap() }
+            Column::Name => { self.value_name().unwrap() }
+            Column::Created => { self.value_created().unwrap().to_string() }
         }
     }
 
-    fn value_size(&self) -> FileColumn;
-    fn value_absolute_path(&self) -> FileColumn;
-    fn value_path(&self) -> FileColumn;
-    fn value_file_type(&self) -> FileColumn;
-    fn value_file_extension(&self) -> FileColumn;
-    fn value_name(&self) -> FileColumn;
-    fn value_created(&self) -> FileColumn;
+    fn value_size(&self) -> Option<u64>;
+    fn value_absolute_path(&self) -> Option<PathBuf>;
+    fn value_path(&self) -> Option<PathBuf>;
+    fn value_file_type(&self) -> Option<String>;
+    fn value_file_extension(&self) -> Option<String>;
+    fn value_name(&self) -> Option<String>;
+    fn value_created(&self) -> Option<u64>;
 }
 
 trait ColumnGetter {
@@ -204,47 +153,46 @@ impl ColumnDisplay for CoreFile {
 }
 
 impl ColumnValue for CoreFile {
-    fn value_size(&self) -> FileColumn {
+    fn value_size(&self) -> Option<u64> {
         match self.size() {
-            Ok(size) => { FileColumn::Size(Some(size)) }
-            Err(_) => { FileColumn::Size(None) }
+            Ok(size) => { Some(size) }
+            Err(_) => { None }
         }
     }
 
-    fn value_absolute_path(&self) -> FileColumn {
+    fn value_absolute_path(&self) -> Option<PathBuf> {
         match self.absolute_path() {
-            Ok(path) => { FileColumn::AbsolutePath(Some(path)) }
-            Err(_) => { FileColumn::AbsolutePath(None) }
+            Ok(path) => { Some(path) }
+            Err(_) => { None }
         }
     }
 
-    fn value_path(&self) -> FileColumn {
+    fn value_path(&self) -> Option<PathBuf> {
         match &self.path {
-            Some(path) => { FileColumn::Path(Some(path.clone())) }
-            None => { FileColumn::Path(None) }
+            Some(path) => { Some(path.clone()) }
+            None => { None }
         }
     }
 
-    fn value_file_type(&self) -> FileColumn {
-        FileColumn::FileType(None)
+    fn value_file_type(&self) -> Option<String> {
+        None
     }
 
-    fn value_created(&self) -> FileColumn {
-        FileColumn::Created(None)
-        //format!("{:?}", self.metadata().unwrap().created().unwrap())
+    fn value_created(&self) -> Option<u64> {
+        None
     }
 
-    fn value_file_extension(&self) -> FileColumn {
+    fn value_file_extension(&self) -> Option<String> {
         match &self.name {
-            Some(name) => { FileColumn::FileExtension(Some(name.to_string_lossy().chars().rev().take_while(|c| *c != '.').collect::<String>())) }
-            None => { FileColumn::FileExtension(None) }
+            Some(name) => { Some(name.to_string_lossy().chars().rev().take_while(|c| *c != '.').collect::<String>()) }
+            None => { None }
         }
     }
 
-    fn value_name(&self) -> FileColumn {
+    fn value_name(&self) -> Option<String> {
         match &self.name {
-            Some(name) => { FileColumn::Name(Some(name.to_string_lossy().into_owned())) }
-            None => { FileColumn::Name(None) }
+            Some(name) => { Some(name.to_string_lossy().into_owned()) }
+            None => { None }
         }
     }
 }
