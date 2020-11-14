@@ -15,7 +15,7 @@ trait FileColumnTrait {
 pub enum FileColumn {
     Name(Option<String>),
     Path(Option<PathBuf>),
-    FileType(Option<String>),
+    Type(Option<String>),
     FileExtension(Option<String>),
     Size(Option<u64>),
     AbsolutePath(Option<PathBuf>),
@@ -44,7 +44,7 @@ impl fmt::Display for FileColumn {
 pub enum Column {
     Name,
     Path,
-    FileType,
+    Type,
     FileExtension,
     Size,
     AbsolutePath,
@@ -54,7 +54,7 @@ pub enum Column {
 
 impl Column {
     pub fn iterator() -> Iter<'static, Column> {
-        [Column::Name, Column::Path, Column::FileType, Column::FileExtension, Column::Size, Column::AbsolutePath, Column::Created].iter()
+        [Column::Name, Column::Path, Column::Type, Column::FileExtension, Column::Size, Column::AbsolutePath, Column::Created].iter()
     }
 }
 
@@ -66,7 +66,7 @@ impl FromStr for Column {
         match str {
             "name"  => Ok(Column::Name),
             "path"  => Ok(Column::Path),
-            "filetype" | "file_type"  => Ok(Column::FileType),
+            "type"  => Ok(Column::Type),
             "file_extension" | "fileextension" => Ok(Column::FileExtension),
             "size" => Ok(Column::Size),
             "absolutepath" | "absolute_path" => Ok(Column::AbsolutePath),

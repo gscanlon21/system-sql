@@ -12,7 +12,7 @@ pub trait ColumnDisplay {
             Column::Size => { self.display_size() }
             Column::Path => { self.display_path() }
             Column::AbsolutePath => { self.display_absolute_path() }
-            Column::FileType => { self.display_file_type() }
+            Column::Type => { self.display_type() }
             Column::FileExtension => { self.display_file_extension() }
             Column::Name => { self.display_name() }
             Column::Created => { self.display_created() }
@@ -22,7 +22,7 @@ pub trait ColumnDisplay {
     fn display_size(&self) -> String;
     fn display_absolute_path(&self) -> String;
     fn display_path(&self) -> String;
-    fn display_file_type(&self) -> String;
+    fn display_type(&self) -> String;
     fn display_file_extension(&self) -> String;
     fn display_name(&self) -> String;
     fn display_created(&self) -> String;
@@ -33,8 +33,8 @@ pub trait ColumnValue {
         match column {
             Column::Size => { self.value_size().unwrap().to_string() }
             Column::Path => { self.value_path().unwrap().to_string_lossy().to_string() }
+            Column::Type => { if self.value_type().unwrap().is_file() { "file".to_owned() } else { "dir".to_owned() } }
             Column::AbsolutePath => { self.value_absolute_path().unwrap().to_string_lossy().to_string() }
-            Column::FileType => { self.value_file_type().unwrap() }
             Column::FileExtension => { self.value_file_extension().unwrap() }
             Column::Name => { self.value_name().unwrap() }
             Column::Created => { self.value_created().unwrap().to_string() }
@@ -44,7 +44,7 @@ pub trait ColumnValue {
     fn value_size(&self) -> Option<u64>;
     fn value_absolute_path(&self) -> Option<PathBuf>;
     fn value_path(&self) -> Option<PathBuf>;
-    fn value_file_type(&self) -> Option<String>;
+    fn value_type(&self) -> Option<fs::FileType>;
     fn value_file_extension(&self) -> Option<String>;
     fn value_name(&self) -> Option<String>;
     fn value_created(&self) -> Option<u64>;
@@ -56,7 +56,7 @@ trait ColumnGetter {
     fn absolute_path(&self) -> Result<PathBuf, io::Error>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CoreFile {
     pub name: Option<OsString>,
     pub path: Option<PathBuf>,
@@ -129,8 +129,8 @@ impl ColumnDisplay for CoreFile {
         }
     }
 
-    fn display_file_type(&self) -> String {
-        "TODO".to_owned()
+    fn display_type(&self) -> String {
+        if self.metadata().unwrap().file_type().is_file() { "file".to_owned() } else { "dir".to_owned() }
     }
 
     fn display_created(&self) -> String {
@@ -174,8 +174,8 @@ impl ColumnValue for CoreFile {
         }
     }
 
-    fn value_file_type(&self) -> Option<String> {
-        None
+    fn value_type(&self) -> Option<fs::FileType> {
+        Some(self.metadata().unwrap().file_type())
     }
 
     fn value_created(&self) -> Option<u64> {

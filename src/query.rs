@@ -1,6 +1,6 @@
 
 use sqlparser::{ast::*, dialect::MsSqlDialect, parser::Parser, test_utils};
-use std::{fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
+use std::{collections::HashMap, fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
 use crate::core::{column::Column, column::FileColumn, dialect::CoreDialect, error::CoreError, file::ColumnDisplay, expr_result::ExprResult, file::{ColumnValue, CoreFile}};
 use crate::display::*;
 use strum::IntoEnumIterator;
@@ -30,11 +30,11 @@ pub fn parse_sql(sql: &str, dialect: CoreDialect) -> Result<(), CoreError> {
 }
 
 pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
-    return match statement {
+    match statement {
         Statement::Query(query) => {
             consume_query(*query)?;
 
-            return  Ok(());
+            Ok(())
         }
         Statement::Insert { table_name, columns, source } => {
             let files = consume_query(*source)?;
@@ -51,18 +51,15 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
                 }
             };
 
-            return Ok(());
+            Ok(())
         }
-        Statement::Copy { table_name, columns, values } => { unimplemented!() }
         Statement::Update { table_name, assignments, selection } => { 
-            let files = consume_table_name(&table_name.0[0].value);
+            let table_name = &table_name.0[0].value;
+            let files = consume_table_name(table_name).unwrap();
 
             if let Some(expr) = selection {
-                for file in &files.unwrap() {
-                    println!("{:#?}", expr.clone());
-                    let result = consume_expr(expr.clone(), Some(file));
-                    println!("{:#?}", result);
-                }
+                let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name.clone(), files)].iter().cloned().collect();
+                let result = consume_expr(expr.clone(), Some(&mut hash_map));
             }
 
             for assignment in &assignments {
@@ -71,21 +68,12 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
 
             Ok(())
         }
-        Statement::Delete { table_name, selection } => { unimplemented!() }
-        Statement::Drop { object_type, if_exists, names, cascade } => { unimplemented!() }
-        Statement::SetVariable { local, variable, value } => { unimplemented!() }
-        Statement::ShowVariable { variable } => { unimplemented!() }
         Statement::ShowColumns { extended, full, table_name, filter } => { 
             let columns = Column::iterator().map(|c| c.to_string()).collect::<Vec<String>>();
             println!("Columns: {}", columns.join(", "));
 
             Ok(())
         }
-        Statement::StartTransaction { modes } => { unimplemented!() }
-        Statement::SetTransaction { modes } => { unimplemented!() }
-        Statement::Commit { chain } => { unimplemented!() }
-        Statement::Rollback { chain } => { unimplemented!() }
-        Statement::Assert { condition, message } => { unimplemented!() }
         _ => { unimplemented!() }
     }
 }
@@ -102,47 +90,63 @@ pub fn consume_query(query: Query) -> Result<Vec<CoreFile>, CoreError> {
 
             return Ok(files);
         }
-        SetExpr::Query(_) => { unimplemented!() }
-        SetExpr::SetOperation { op, all, left, right } => { unimplemented!() }
-        SetExpr::Values(_) => { unimplemented!() }
+        _ => { unimplemented!() }
     }
 }
 
-pub fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
+fn inner_join<TLeft, TRight, TKey, TResult>(left: Vec<TLeft>, right: Vec<TRight>, left_key_selector: Box<dyn Fn(&TLeft) -> TKey>, right_key_selector: Box<dyn Fn(&TRight) -> TKey>, result_selector: Box<dyn Fn(TRight, TLeft) -> TResult>) -> Vec<TResult> 
+    where TKey: std::cmp::Eq + std::hash::Hash + std::fmt::Debug, TRight: Clone + std::fmt::Debug, TLeft: Clone {
+    let mut right_iter = right.iter();
+
+    let mut results = Vec::new();
+    let lookup: HashMap<TKey, HashMap<TKey, TLeft>> = HashMap::new();
+    for item in left
+    {
+        let key = left_key_selector(&item);
+        lookup.entry(key).or(item);
+    }
+    while let Some(right_item) = right_iter.next() {
+        println!("right_item: {:#?}", &right_key_selector(&right_item));
+        let g: Option<&HashMap<TKey, TLeft>> = lookup.get(&right_key_selector(&right_item));
+        if let Some(g) = g {
+            for i in g.keys()
+            {
+                results.push(result_selector(right_item.clone(), g.get(i).unwrap().clone()));
+            }
+        }
+    }
+
+    results
+}
+
+fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
     for table_with_join in select.from {
-        let mut files = consume_relation(table_with_join.relation)?;
+        let (table_name, mut files) = consume_relation(table_with_join.relation)?;
+        let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
 
         for join in table_with_join.joins {
-            let join_files = consume_relation(join.relation)?;
+            let (join_table_name, join_files) = consume_relation(join.relation.clone())?;
             match join.join_operator {
                 JoinOperator::Inner(constraint) => {
                     match constraint {
                         sqlparser::ast::JoinConstraint::On(expr) => {
-                            for file in &join_files {
-                                let expr_result = consume_expr(expr, Some(file))?;
-                                match expr_result {
-                                    ExprResult::Select(_) => {}
-                                    ExprResult::Assignment(_) => {}
-                                    ExprResult::Value(_) => {}
-                                    ExprResult::Filter(bool) => {
-                                        if bool {
-                                            files.push(file)
-                                        }
-                                    }
-                                    ExprResult::Expr(_) => {}
+                            hash_map.insert(join_table_name, join_files.clone());
+
+                            let expr_result = consume_expr(expr, Some(&mut hash_map))?;
+                            println!("expr_result: {:#?}", expr_result);
+
+                            match expr_result {
+                                ExprResult::BinaryOp(left, op, right) => {
+                                    let join_result = inner_join(files.clone(), join_files, left, right, Box::new(|jf: CoreFile, f: CoreFile| vec![f, jf]));
+                                    println!("{:#?}", join_result.first());
                                 }
+                                _ => { unimplemented!() }
                             }
                         }
-                        sqlparser::ast::JoinConstraint::Using(_) => {}
-                        sqlparser::ast::JoinConstraint::Natural => {}
+                        _ => {}
                     }
                 }
-                JoinOperator::LeftOuter(_) => {}
-                JoinOperator::RightOuter(_) => {}
-                JoinOperator::FullOuter(_) => {}
-                JoinOperator::CrossJoin => {}
-                JoinOperator::CrossApply => {}
-                JoinOperator::OuterApply => {}
+                _ => {}
             }
         }
 
@@ -205,47 +209,110 @@ fn consume_select_item(select_item: SelectItem) {
     }
 }
 
-fn consume_expr(expr: Expr) -> Result<ExprResult, CoreError> {
+fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>) -> Result<ExprResult, CoreError> {
     match expr {
         Expr::Identifier(ident) => { consume_expr_ident(ident) }
         Expr::CompoundIdentifier(mut idents) => { 
             let column = idents.pop().unwrap();
+            let column_select = match consume_expr_ident(column) {
+                Ok(ExprResult::Select(select)) => { Ok(select) }
+                _ => { Err(()) }
+            }?;
+
             let table = idents.pop().unwrap();
-            
-            //Ok(ExprResult::Select())
 
-            unimplemented!()
+            Ok(ExprResult::CompoundSelect(table.value, column_select))
         }
-        Expr::BinaryOp { left, op, right } =>{ 
-            let left = match consume_expr(*left) {
-                Ok(expr) => {
-                    match expr {
-                        ExprResult::Select(select) => {
-                            Some(select(core_file.unwrap()))
-                        }
-                        ExprResult::Value(literal) => { Some(literal) }
-                        _ => { None }
+        Expr::BinaryOp { left, op, right } => { 
+            let left_result = consume_expr(*left, None)?;
+            let right_result = consume_expr(*right, None)?;
+
+            if let Some(tables) = tables {
+                match (left_result, right_result) {
+                    (ExprResult::Select(left), ExprResult::Select(right)) => {
+                        Ok(ExprResult::BinaryOp(left, op, right))
                     }
-                }
-                Err(_) => { None }
-            }.unwrap();
-
-            let right = match consume_expr(*right) {
-                Ok(expr) => {
-                    match expr {
-                        ExprResult::Select(select) => {
-                            Some(select(core_file.unwrap()))
-                        }
-                        ExprResult::Value(literal) => { Some(literal) }
-                        _ => { None }
+                    (ExprResult::CompoundSelect(left_table_name, left), ExprResult::CompoundSelect(right_table_name, right)) => {
+                        Ok(ExprResult::BinaryOp(left, op, right))
                     }
+                    _ => { unimplemented!() }
                 }
-                Err(_) => { None }
-            }.unwrap();
+            } else {
+                panic!()
+            }
 
-            println!("binary_op: {{ left: {:?}, right: {:?} }}", left, right);
+            // if let Some(tables) = tables {
+            //     match (left_result, right_result) {
+            //         (ExprResult::CompoundSelect(left_table, left), ExprResult::CompoundSelect(right_table, right)) => {
+            //             let left_files = tables.iter().filter_map(|t| if t.0.to_owned() == left_table { Some(t.1) } else { None } ).collect();
+            //             let right_files = tables.iter().filter_map(|t| if t.0.to_owned() == right_table { Some(t.1) } else { None } ).collect();
+            //         }
+            //         (ExprResult::CompoundSelect(_, _), ExprResult::Select(_)) => { unimplemented!() }
+            //         (ExprResult::CompoundSelect(_, _), ExprResult::Value(_)) => { unimplemented!() }
+            //         (ExprResult::Select(_), ExprResult::CompoundSelect(_, _)) => { unimplemented!() }
+            //         (ExprResult::Select(left), ExprResult::Select(right)) => {
+            //             tables.iter().flat_map(|a| a.1).filter_map(|f| match consume_op(left(f), &op, right(f)) { // left and right should return an option if the column does not exist on the table
+            //                 Ok(Value::Boolean(b)) => { 
+            //                     if b {
+            //                         Some(f)
+            //                     } else {
+            //                         None
+            //                     }
+            //                 }
+            //                 _ => { panic!() }
+            //             });
+            //         }
+            //         (ExprResult::Select(_), ExprResult::Value(_)) => { unimplemented!() }
+            //         (ExprResult::Value(_), ExprResult::CompoundSelect(_, _)) => { unimplemented!() }
+            //         (ExprResult::Value(_), ExprResult::Select(_)) => { unimplemented!() }
+            //         (ExprResult::Value(left), ExprResult::Value(right)) => {
+            //             match consume_op(left, &op, right) {
+            //                 Ok(Value::Boolean(b)) => { 
+            //                     if b == false { *tables = HashMap::new() }
+            //                  }
+            //                 _ => { panic!() }
+            //             }
+            //         }
+            //         _ => { panic!() }
+            //     }
+            // }
 
-            Ok(ExprResult::Value(consume_op(left, op, right)))
+           
+            //     let mut results: HashMap<String, Vec<CoreFile>> = HashMap::new();
+
+            //     let mut table_iter = tables.iter();
+            //     while let Some((table_name, files)) = table_iter.next() {
+            //         let mut iter = files.iter();
+            //         while let Some(file) = iter.next() {
+            //             let left = match &left_result {
+            //                 ExprResult::Select(select) => {
+            //                     Some(select(file))
+            //                 }
+            //                 ExprResult::Value(literal) => { Some(literal.clone()) }
+            //                 _ => { None }
+            //             }.unwrap();
+            
+            //             let right = match &right_result {
+            //                 ExprResult::Select(select) => {
+            //                     Some(select(file))
+            //                 }
+            //                 ExprResult::Value(literal) => { Some(literal.clone()) }
+            //                 _ => { None }
+            //             }.unwrap();    
+        
+            //             println!("binary_op: {{ left: {:?}, right: {:?} }}", left, right);
+        
+            //             match consume_op(left, &op, right) {
+            //                 Ok(Value::Boolean(b)) => { 
+            //                     if b {
+            //                         results.entry(table_name.clone()).or_insert(Vec::new()).push(file.clone());
+            //                     }
+            //                  }
+            //                 _ => { panic!() }
+            //             }
+            //         }
+            //     }
+            //     tables = results;
         }
         Expr::Value(value) => { Ok(ExprResult::Value(value)) }
         _ => { unimplemented!( )}
@@ -259,57 +326,51 @@ fn consume_expr_ident(ident: Ident) -> Result<ExprResult, CoreError> {
     }
 }
 
-fn consume_op2(left: ExprResult, op: BinaryOperator, right: ExprResult) -> ExprResult {
+fn consume_op(left: Value, op: &BinaryOperator, right: Value) -> Result<Value, CoreError> {
     println!("op: {{ left: {:?}, right: {:?} }}", left, right);
     match op {
         BinaryOperator::Plus => { 
             match (left, right) {
-                (ExprResult::Select(a), ExprResult::Select(b)) => {
-                    ExprResult::Filter2(Box::new(|c| consume_op(a(c), op, b(c))))
-                }
-                _ => { panic!() }
+                (Value::Number(a), Value::Number(b)) => { Ok(Value::Number((a.parse::<i32>().unwrap() + b.parse::<i32>().unwrap()).to_string())) }
+                (Value::Number(a), Value::Null) => { Ok(Value::Number(a)) }
+                (Value::SingleQuotedString(mut a), Value::SingleQuotedString(b)) => { a.push_str(b.as_str()); Ok(Value::SingleQuotedString(a)) }
+                (Value::SingleQuotedString(a), Value::Null) => { Ok(Value::SingleQuotedString(a)) }
+                (Value::Boolean(a), Value::Null) => { Ok(Value::Boolean(a)) }
+                (Value::Null, Value::Number(b)) => { Ok(Value::Number(b)) }
+                (Value::Null, Value::SingleQuotedString(b)) => { Ok(Value::SingleQuotedString(b)) }
+                (Value::Null, Value::Boolean(b)) => { Ok(Value::Boolean(b)) }
+                (Value::Null, Value::Null) => { Ok(Value::Null) }
+                _ => { Err(CoreError::GeneralError("The data types are invalid for the specified operator".to_owned())) }
             }
-         }
-        //BinaryOperator::Eq => { Value::Boolean(left == right) }
-        _ => { unimplemented!() }
-    }
-}
-
-fn consume_op(left: Value, op: BinaryOperator, right: Value) -> Value {
-    println!("op: {{ left: {:?}, right: {:?} }}", left, right);
-    match op {
-        BinaryOperator::Plus => { 
+        }
+        BinaryOperator::Minus => {
             match (left, right) {
-                (Value::Number(a), Value::Number(b)) => { Value::Number((a.parse::<i32>().unwrap() + b.parse::<i32>().unwrap()).to_string()) }
-                (Value::Number(a), Value::Null) => { Value::Number(a) }
-                (Value::SingleQuotedString(mut a), Value::SingleQuotedString(b)) => { a.push_str(b.as_str()); Value::SingleQuotedString(a) }
-                (Value::SingleQuotedString(a), Value::Null) => { Value::SingleQuotedString(a) }
-                (Value::Boolean(a), Value::Null) => { Value::Boolean(a) }
-                (Value::Null, Value::Number(b)) => { Value::Number(b) }
-                (Value::Null, Value::SingleQuotedString(b)) => { Value::SingleQuotedString(b) }
-                (Value::Null, Value::Boolean(b)) => { Value::Boolean(b) }
-                (Value::Null, Value::Null) => { Value::Null }
-                _ => { panic!() }
+                (Value::Number(a), Value::Number(b)) => { Ok(Value::Number((a.parse::<i32>().unwrap() - b.parse::<i32>().unwrap()).to_string())) }
+                (Value::Number(a), Value::Null) => { Ok(Value::Number(a)) }
+                (Value::SingleQuotedString(a), Value::Null) => { Ok(Value::SingleQuotedString(a)) }
+                (Value::Boolean(a), Value::Null) => { Ok(Value::Boolean(a)) }
+                (Value::Null, Value::Number(b)) => { Ok(Value::Number(b)) }
+                (Value::Null, Value::SingleQuotedString(b)) => { Ok(Value::SingleQuotedString(b)) }
+                (Value::Null, Value::Boolean(b)) => { Ok(Value::Boolean(b)) }
+                (Value::Null, Value::Null) => { Ok(Value::Null) }
+                _ => { Err(CoreError::GeneralError("The data types are invalid for the specified operator".to_owned())) }
             }
-         }
-        BinaryOperator::Eq => { Value::Boolean(left == right) }
+        }
+        BinaryOperator::Eq => { Ok(Value::Boolean(left == right)) }
         _ => { unimplemented!() }
     }
 }
 
-fn consume_relation(relation: TableFactor) -> Result<Vec<CoreFile>, CoreError> {
-    let mut files: Vec<CoreFile> = Vec::new();
+fn consume_relation(relation: TableFactor) -> Result<(String, Vec<CoreFile>), CoreError> {
     match relation {
         TableFactor::Table { name, alias, args, with_hints } => {
             if let Some(table_name) = name.0.first() {
-                files = consume_table_name(table_name.value.as_str())?;
+                return Ok((table_name.value.clone(), consume_table_name(table_name.value.as_str())?));
             }
+            panic!()
         }
-        TableFactor::Derived { lateral, subquery, alias } => {}
-        TableFactor::NestedJoin(_) => {}
+        _ => { unimplemented!() }
     }
-
-    return Ok(files);
 }
 
 fn consume_table_name(table_name: &str) -> Result<Vec<CoreFile>, CoreError> {
@@ -330,6 +391,54 @@ mod tests {
     use super::*;
 
     const PATH_TO_TEST_DIR: &str = "./test/";
+
+    #[test]
+    fn consume_op_add_number_number() {
+        let left_val = Value::Number("2".to_owned());
+        let right_val = Value::Number("2".to_owned());
+        let result = consume_op(left_val, &BinaryOperator::Plus, right_val);
+
+        assert_eq!(match result {
+            Ok(Value::Number(string)) => { string }
+            _ => { panic!("Incorrect enum variant expected") }
+        }, "4".to_owned());
+    }
+
+    #[test]
+    fn consume_op_add_string_string() {
+        let left_val = Value::SingleQuotedString("2".to_owned());
+        let right_val = Value::SingleQuotedString("2".to_owned());
+        let result = consume_op(left_val, &BinaryOperator::Plus, right_val);
+
+        assert_eq!(match result {
+            Ok(Value::SingleQuotedString(string)) => { string }
+            _ => { panic!("Incorrect enum variant expected") }
+        }, "22".to_owned());
+    }
+
+    #[test]
+    fn consume_op_subtract_string_string() {
+        let left_val = Value::SingleQuotedString("2".to_owned());
+        let right_val = Value::SingleQuotedString("2".to_owned());
+        let result = consume_op(left_val, &BinaryOperator::Minus, right_val);
+
+        assert!(match result {
+            Err(CoreError::GeneralError(_)) => { true }
+            _ => { panic!("Incorrect enum variant expected") }
+        });
+    }
+
+    #[test]
+    fn consume_op_subtract_number_number() {
+        let left_val = Value::Number("-2".to_owned());
+        let right_val = Value::Number("-2".to_owned());
+        let result = consume_op(left_val, &BinaryOperator::Minus, right_val);
+
+        assert_eq!(match result {
+            Ok(Value::Number(string)) => { string }
+            _ => { panic!("Incorrect enum variant expected") }
+        }, "0".to_owned());
+    }
 
     #[test]
     fn consume_table_name() {
