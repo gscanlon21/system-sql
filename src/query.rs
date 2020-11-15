@@ -79,14 +79,10 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
 }
 
 
-pub fn consume_query(query: Query) -> Result<Vec<CoreFile>, CoreError> {
+pub fn consume_query(query: Query) -> Result<Vec<Vec<CoreFile>>, CoreError> {
     match query.body {
         SetExpr::Select(select) => { 
             let files = consume_select(*select)?;
-            
-            for file in &files {
-                println!("{}", file);
-            }
 
             return Ok(files);
         }
@@ -95,23 +91,23 @@ pub fn consume_query(query: Query) -> Result<Vec<CoreFile>, CoreError> {
 }
 
 fn inner_join<TLeft, TRight, TKey, TResult>(left: Vec<TLeft>, right: Vec<TRight>, left_key_selector: Box<dyn Fn(&TLeft) -> TKey>, right_key_selector: Box<dyn Fn(&TRight) -> TKey>, result_selector: Box<dyn Fn(TRight, TLeft) -> TResult>) -> Vec<TResult> 
-    where TKey: std::cmp::Eq + std::hash::Hash + std::fmt::Debug, TRight: Clone + std::fmt::Debug, TLeft: Clone {
+    where TKey: std::cmp::Eq + std::hash::Hash + std::fmt::Debug, TRight: Clone + std::fmt::Debug, TLeft: Clone, TResult: std::fmt::Debug {
     let mut right_iter = right.iter();
 
     let mut results = Vec::new();
-    let lookup: HashMap<TKey, HashMap<TKey, TLeft>> = HashMap::new();
+    let mut lookup: HashMap<TKey, Vec<TLeft>> = HashMap::new();
     for item in left
     {
         let key = left_key_selector(&item);
-        lookup.entry(key).or(item);
+        let values = lookup.entry(key).or_insert(Vec::new());
+        values.push(item);
     }
     while let Some(right_item) = right_iter.next() {
-        println!("right_item: {:#?}", &right_key_selector(&right_item));
-        let g: Option<&HashMap<TKey, TLeft>> = lookup.get(&right_key_selector(&right_item));
+        let g: Option<&Vec<TLeft>> = lookup.get(&right_key_selector(&right_item));
         if let Some(g) = g {
-            for i in g.keys()
+            for i in g
             {
-                results.push(result_selector(right_item.clone(), g.get(i).unwrap().clone()));
+                results.push(result_selector(right_item.clone(), i.clone()));
             }
         }
     }
@@ -119,10 +115,11 @@ fn inner_join<TLeft, TRight, TKey, TResult>(left: Vec<TLeft>, right: Vec<TRight>
     results
 }
 
-fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
+fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
     for table_with_join in select.from {
-        let (table_name, mut files) = consume_relation(table_with_join.relation)?;
+        let (table_name, files) = consume_relation(table_with_join.relation)?;
         let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
+        let mut result_files: Vec<Vec<CoreFile>> = hash_map.iter().map(|f| f.1.clone()).collect();
 
         for join in table_with_join.joins {
             let (join_table_name, join_files) = consume_relation(join.relation.clone())?;
@@ -136,9 +133,13 @@ fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
                             println!("expr_result: {:#?}", expr_result);
 
                             match expr_result {
-                                ExprResult::BinaryOp(left, op, right) => {
+                                ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)) => {
                                     let join_result = inner_join(files.clone(), join_files, left, right, Box::new(|jf: CoreFile, f: CoreFile| vec![f, jf]));
-                                    println!("{:#?}", join_result.first());
+                                    hash_map.remove(&left_table_name);
+                                    hash_map.remove(&right_table_name);
+
+                                    result_files = join_result;
+                                    //*hash_map.entry(right_table_name).or_default() = join_result.iter().map(|f| f.1.clone()).collect();
                                 }
                                 _ => { unimplemented!() }
                             }
@@ -151,8 +152,8 @@ fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
         }
 
         if select.distinct {
-            files.sort();
-            files.dedup()
+            result_files.sort();
+            result_files.dedup()
         }
 
         if let Some(ref top) = select.top  {
@@ -167,10 +168,10 @@ fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
                     Value::Null => { None }
                 };
 
-                files = if let Some(quantity) = quantity {
-                    files.into_iter().take(quantity).collect()
+                result_files = if let Some(quantity) = quantity {
+                    result_files.into_iter().take(quantity).collect()
                 } else {
-                    files
+                    result_files
                 }
             }
         }
@@ -179,7 +180,7 @@ fn consume_select(select: Select) -> Result<Vec<CoreFile>, CoreError> {
             //consume_select_item(projction);
         }
 
-        return Ok(files)
+        return Ok(result_files)
     }
 
 
@@ -230,10 +231,10 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
             if let Some(tables) = tables {
                 match (left_result, right_result) {
                     (ExprResult::Select(left), ExprResult::Select(right)) => {
-                        Ok(ExprResult::BinaryOp(left, op, right))
+                        Ok(ExprResult::BinaryOp(("".to_owned(), left), op, ("".to_owned(), right)))
                     }
                     (ExprResult::CompoundSelect(left_table_name, left), ExprResult::CompoundSelect(right_table_name, right)) => {
-                        Ok(ExprResult::BinaryOp(left, op, right))
+                        Ok(ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)))
                     }
                     _ => { unimplemented!() }
                 }

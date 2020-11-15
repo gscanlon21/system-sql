@@ -14,7 +14,7 @@ pub enum ExprResult {
     Filter(bool),
     Filter2(Box<dyn Fn(CoreFile, CoreFile) -> ast::Value>),
     Expr(ast::Expr),
-    BinaryOp(Box<dyn Fn(&CoreFile) -> ast::Value>, ast::BinaryOperator, Box<dyn Fn(&CoreFile) -> ast::Value>)
+    BinaryOp((String, Box<dyn Fn(&CoreFile) -> ast::Value>), ast::BinaryOperator, (String, Box<dyn Fn(&CoreFile) -> ast::Value>))
 }
 
 impl fmt::Debug for ExprResult {

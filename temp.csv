@@ -1,16 +1,66 @@
-Name                  , Size , Path                          , AbsolutePath
-.DS_Store             , 6148 , ./../../.DS_Store             , 
-.stfolder             , 0    , ./../../.stfolder             , 
-.stignore             , 23   , ./../../.stignore             , 
-.stignore.txt         , 449  , ./../../.stignore.txt         , 
-091120_1408.csv       , 24862, ./../../091120_1408.csv       , 
-101420_1056.csv       , 25478, ./../../101420_1056.csv       , 
-android               , 8192 , ./../../android               , 
-azure                 , 4096 , ./../../azure                 , 
-csharp                , 0    , ./../../csharp                , 
-gscanlon              , 4096 , ./../../gscanlon              , 
-kotlin                , 0    , ./../../kotlin                , 
-MotivationTechnologies, 0    , ./../../MotivationTechnologies, 
-react                 , 4096 , ./../../react                 , 
-sql                   , 0    , ./../../sql                   , 
-windows               , 0    , ./../../windows               , 
+1         , 2   , 3                                    , 4
+.git      , dir , AppAuth-iOS                          , dir
+sql       , dir , AppAuth-iOS                          , dir
+src       , dir , AppAuth-iOS                          , dir
+target    , dir , AppAuth-iOS                          , dir
+test      , dir , AppAuth-iOS                          , dir
+.git      , dir , ConsoleApp1                          , dir
+sql       , dir , ConsoleApp1                          , dir
+src       , dir , ConsoleApp1                          , dir
+target    , dir , ConsoleApp1                          , dir
+test      , dir , ConsoleApp1                          , dir
+.git      , dir , loading-timer                        , dir
+sql       , dir , loading-timer                        , dir
+src       , dir , loading-timer                        , dir
+target    , dir , loading-timer                        , dir
+test      , dir , loading-timer                        , dir
+.git      , dir , pasteline                            , dir
+sql       , dir , pasteline                            , dir
+src       , dir , pasteline                            , dir
+target    , dir , pasteline                            , dir
+test      , dir , pasteline                            , dir
+.gitignore, file, rev3.bundle                          , file
+Cargo.lock, file, rev3.bundle                          , file
+Cargo.toml, file, rev3.bundle                          , file
+README.md , file, rev3.bundle                          , file
+temp.csv  , file, rev3.bundle                          , file
+.gitignore, file, rev4.bundle                          , file
+Cargo.lock, file, rev4.bundle                          , file
+Cargo.toml, file, rev4.bundle                          , file
+README.md , file, rev4.bundle                          , file
+temp.csv  , file, rev4.bundle                          , file
+.gitignore, file, rev5.bundle                          , file
+Cargo.lock, file, rev5.bundle                          , file
+Cargo.toml, file, rev5.bundle                          , file
+README.md , file, rev5.bundle                          , file
+temp.csv  , file, rev5.bundle                          , file
+.gitignore, file, rev6.bundle                          , file
+Cargo.lock, file, rev6.bundle                          , file
+Cargo.toml, file, rev6.bundle                          , file
+README.md , file, rev6.bundle                          , file
+temp.csv  , file, rev6.bundle                          , file
+.git      , dir , reversedictionary                    , dir
+sql       , dir , reversedictionary                    , dir
+src       , dir , reversedictionary                    , dir
+target    , dir , reversedictionary                    , dir
+test      , dir , reversedictionary                    , dir
+.git      , dir , reversedictionary-sub                , dir
+sql       , dir , reversedictionary-sub                , dir
+src       , dir , reversedictionary-sub                , dir
+target    , dir , reversedictionary-sub                , dir
+test      , dir , reversedictionary-sub                , dir
+.gitignore, file, revmod.bundle                        , file
+Cargo.lock, file, revmod.bundle                        , file
+Cargo.toml, file, revmod.bundle                        , file
+README.md , file, revmod.bundle                        , file
+temp.csv  , file, revmod.bundle                        , file
+.git      , dir , systemSQL                            , dir
+sql       , dir , systemSQL                            , dir
+src       , dir , systemSQL                            , dir
+target    , dir , systemSQL                            , dir
+test      , dir , systemSQL                            , dir
+.git      , dir , Visitors and Query Stuff (2020-11-07), dir
+sql       , dir , Visitors and Query Stuff (2020-11-07), dir
+src       , dir , Visitors and Query Stuff (2020-11-07), dir
+target    , dir , Visitors and Query Stuff (2020-11-07), dir
+test      , dir , Visitors and Query Stuff (2020-11-07), dir

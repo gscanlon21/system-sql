@@ -9,23 +9,30 @@ use std::path::Path;
 use crate::core::{column::Column, file::{ColumnDisplay, CoreFile}};
 use serde_json::{json, to_string};
 
-pub fn write_csv(columns: Vec<Column>, files: Vec<CoreFile>, file_path: &String) {
+pub fn write_csv(columns: Vec<Column>, files: Vec<Vec<CoreFile>>, file_path: &String) {
+    println!("csv files: {:#?}", files.clone());
+
     let mut wtr = csv::Writer::from_path(file_path).unwrap();
                     
-    wtr.write_record(columns.iter().map(|c| c.to_string())).unwrap();
+    // columns.iter().map(|c| c.to_string())
+    wtr.write_record(&["1","2", "3","4"]).unwrap();
 
-    for file in files {
+    for rows in files {
         let mut cells: Vec<String> = Vec::new();
-        for column in &columns {
-            cells.push(file.display(column));
+        for file in rows {
+            for column in &columns {
+                cells.push(file.display(column));
+            }
         }
+        
+        println!("cells: {:#?}", cells.clone());
         wtr.write_record(cells).unwrap();
     }
 
     wtr.flush().unwrap();
 }
 
-pub fn write_json(columns: Vec<Column>, files: Vec<CoreFile>, file_path: &String) {
+pub fn write_json(columns: Vec<Column>, files: Vec<Vec<CoreFile>>, file_path: &String) {
     let json = json!(files);
     //println!("{:#?}", json);
     print!("{}", json);
