@@ -220,17 +220,6 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     return Err(CoreError::from("There's nothing here!"));
 }
 
-// fn consume_select_item(select_item: SelectItem) {
-//     match select_item {
-//         SelectItem::UnnamedExpr(expr) => {
-//             consume_expr(expr, None).unwrap();
-//         }
-//         SelectItem::ExprWithAlias { expr, alias } => {}
-//         SelectItem::QualifiedWildcard(_) => {}
-//         SelectItem::Wildcard => {}
-//     }
-// }
-
 fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>) -> Result<ExprResult, CoreError> {
     match expr {
         Expr::Identifier(ident) => { consume_expr_ident(ident) }
@@ -262,79 +251,6 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
             } else {
                 panic!()
             }
-
-            // if let Some(tables) = tables {
-            //     match (left_result, right_result) {
-            //         (ExprResult::CompoundSelect(left_table, left), ExprResult::CompoundSelect(right_table, right)) => {
-            //             let left_files = tables.iter().filter_map(|t| if t.0.to_owned() == left_table { Some(t.1) } else { None } ).collect();
-            //             let right_files = tables.iter().filter_map(|t| if t.0.to_owned() == right_table { Some(t.1) } else { None } ).collect();
-            //         }
-            //         (ExprResult::CompoundSelect(_, _), ExprResult::Select(_)) => { unimplemented!() }
-            //         (ExprResult::CompoundSelect(_, _), ExprResult::Value(_)) => { unimplemented!() }
-            //         (ExprResult::Select(_), ExprResult::CompoundSelect(_, _)) => { unimplemented!() }
-            //         (ExprResult::Select(left), ExprResult::Select(right)) => {
-            //             tables.iter().flat_map(|a| a.1).filter_map(|f| match consume_op(left(f), &op, right(f)) { // left and right should return an option if the column does not exist on the table
-            //                 Ok(Value::Boolean(b)) => { 
-            //                     if b {
-            //                         Some(f)
-            //                     } else {
-            //                         None
-            //                     }
-            //                 }
-            //                 _ => { panic!() }
-            //             });
-            //         }
-            //         (ExprResult::Select(_), ExprResult::Value(_)) => { unimplemented!() }
-            //         (ExprResult::Value(_), ExprResult::CompoundSelect(_, _)) => { unimplemented!() }
-            //         (ExprResult::Value(_), ExprResult::Select(_)) => { unimplemented!() }
-            //         (ExprResult::Value(left), ExprResult::Value(right)) => {
-            //             match consume_op(left, &op, right) {
-            //                 Ok(Value::Boolean(b)) => { 
-            //                     if b == false { *tables = HashMap::new() }
-            //                  }
-            //                 _ => { panic!() }
-            //             }
-            //         }
-            //         _ => { panic!() }
-            //     }
-            // }
-
-           
-            //     let mut results: HashMap<String, Vec<CoreFile>> = HashMap::new();
-
-            //     let mut table_iter = tables.iter();
-            //     while let Some((table_name, files)) = table_iter.next() {
-            //         let mut iter = files.iter();
-            //         while let Some(file) = iter.next() {
-            //             let left = match &left_result {
-            //                 ExprResult::Select(select) => {
-            //                     Some(select(file))
-            //                 }
-            //                 ExprResult::Value(literal) => { Some(literal.clone()) }
-            //                 _ => { None }
-            //             }.unwrap();
-            
-            //             let right = match &right_result {
-            //                 ExprResult::Select(select) => {
-            //                     Some(select(file))
-            //                 }
-            //                 ExprResult::Value(literal) => { Some(literal.clone()) }
-            //                 _ => { None }
-            //             }.unwrap();    
-        
-            //             println!("binary_op: {{ left: {:?}, right: {:?} }}", left, right);
-        
-            //             match consume_op(left, &op, right) {
-            //                 Ok(Value::Boolean(b)) => { 
-            //                     if b {
-            //                         results.entry(table_name.clone()).or_insert(Vec::new()).push(file.clone());
-            //                     }
-            //                  }
-            //                 _ => { panic!() }
-            //             }
-            //         }
-            //     }
-            //     tables = results;
         }
         Expr::Value(value) => { Ok(ExprResult::Value(value)) }
         _ => { unimplemented!( )}

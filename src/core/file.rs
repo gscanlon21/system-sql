@@ -35,50 +35,6 @@ pub mod file_type {
         }
     }
 }
-
-// pub trait ColumnDisplay {
-//     fn display(&self, column: &FileColumn) -> String {
-//         match column {
-//             FileColumn::Size(_) => { self.display_size() }
-//             FileColumn::Path(_) => { self.display_path() }
-//             FileColumn::AbsolutePath(_) => { self.display_absolute_path() }
-//             FileColumn::Type(_) => { self.display_type() }
-//             FileColumn::FileExtension(_) => { self.display_file_extension() }
-//             FileColumn::Name(_) => { self.display_name() }
-//             FileColumn::Created(_) => { self.display_created() }
-//         }
-//     }
-
-//     fn display_size(&self) -> String;
-//     fn display_absolute_path(&self) -> String;
-//     fn display_path(&self) -> String;
-//     fn display_type(&self) -> String;
-//     fn display_file_extension(&self) -> String;
-//     fn display_name(&self) -> String;
-//     fn display_created(&self) -> String;
-// }
-
-// pub trait ColumnValue {
-//     fn value(&self, column: &FileColumn) -> String {
-//         match column {
-//             FileColumn::Size(_) => { self.value_size().unwrap().to_string() }
-//             FileColumn::Path(_) => { self.value_path().unwrap().to_string_lossy().to_string() }
-//             FileColumn::Type(_) => { if self.value_type().unwrap().is_file() { "file".to_owned() } else { "dir".to_owned() } }
-//             FileColumn::AbsolutePath(_) => { self.value_absolute_path().unwrap().to_string_lossy().to_string() }
-//             FileColumn::FileExtension(_) => { self.value_file_extension().unwrap() }
-//             FileColumn::Name(_) => { self.value_name().unwrap() }
-//             FileColumn::Created(_) => { self.value_created().unwrap().to_string() }
-//         }
-//     }
-
-//     fn value_size(&self) -> Option<u64>;
-//     fn value_absolute_path(&self) -> Option<PathBuf>;
-//     fn value_path(&self) -> Option<PathBuf>;
-//     fn value_type(&self) -> Option<fs::FileType>;
-//     fn value_file_extension(&self) -> Option<String>;
-//     fn value_name(&self) -> Option<String>;
-//     fn value_created(&self) -> Option<u64>;
-// }
  
 #[derive(Debug, Clone)]
 pub struct CoreFile {
@@ -86,6 +42,15 @@ pub struct CoreFile {
     pub path: Option<PathBuf>,
     pub file_type: Option<FileType>,
     pub file_extension: Option<String>,
+}
+
+impl CoreFile {
+    fn metadata(&self) -> Result<Metadata, io::Error> {
+        match &self.path {
+            Some(path) => { fs::metadata(&path) }
+            None => { Err(io::Error::new(io::ErrorKind::NotFound, "File not found")) }
+        }
+    }
 }
 
 impl FileColumnValues for CoreFile {
@@ -144,15 +109,6 @@ impl FileColumnValue for CoreFile {
     }
 }
 
-impl CoreFile {
-    fn metadata(&self) -> Result<Metadata, io::Error> {
-        match &self.path {
-            Some(path) => { fs::metadata(&path) }
-            None => { Err(io::Error::new(io::ErrorKind::NotFound, "File not found")) }
-        }
-    }
-}
-
 impl Serialize for CoreFile {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -176,97 +132,6 @@ impl Display for CoreFile {
         return Ok(());
     }
 }
-
-
-// impl ColumnDisplay for CoreFile {
-//     fn display_size(&self) -> String {
-//         match self.size() {
-//             Ok(size) => { size.to_string() }
-//             Err(_) => { String::from("") }
-//         }
-//     }
-
-//     fn display_absolute_path(&self) -> String {
-//         match self.absolute_path() {
-//             Ok(path) => { path.clone().to_string_lossy().into_owned() }
-//             Err(_) => { String::from("") }
-//         }
-//     }
-
-//     fn display_path(&self) -> String {
-//         match &self.path {
-//             Some(path) => { path.to_string_lossy().into_owned() }
-//             None => { String::from("") }
-//         }
-//     }
-
-//     fn display_type(&self) -> String {
-//         if self.metadata().unwrap().file_type().is_file() { "file".to_owned() } else { "dir".to_owned() }
-//     }
-
-//     fn display_created(&self) -> String {
-//         format!("{:?}", self.metadata().unwrap().created().unwrap())
-//     }
-
-//     fn display_file_extension(&self) -> String {
-//         match &self.name {
-//             Some(name) => { name.to_string_lossy().chars().rev().take_while(|c| *c != '.').collect::<String>() }
-//             None => { String::from("") }
-//         }
-//     }
-
-//     fn display_name(&self) -> String {
-//         match &self.name {
-//             Some(name) => { name.to_string_lossy().into_owned() }
-//             None => { String::from("") }
-//         }
-//     }
-// }
-
-// impl ColumnValue for CoreFile {
-//     fn value_size(&self) -> Option<u64> {
-//         match self.size() {
-//             Ok(size) => { Some(size) }
-//             Err(_) => { None }
-//         }
-//     }
-
-//     fn value_absolute_path(&self) -> Option<PathBuf> {
-//         match self.absolute_path() {
-//             Ok(path) => { Some(path) }
-//             Err(_) => { None }
-//         }
-//     }
-
-//     fn value_path(&self) -> Option<PathBuf> {
-//         match &self.path {
-//             Some(path) => { Some(path.clone()) }
-//             None => { None }
-//         }
-//     }
-
-//     fn value_type(&self) -> Option<fs::FileType> {
-//         Some(self.metadata().unwrap().file_type())
-//     }
-
-//     fn value_created(&self) -> Option<u64> {
-//         None
-//     }
-
-//     fn value_file_extension(&self) -> Option<String> {
-//         match &self.name {
-//             Some(name) => { Some(name.to_string_lossy().chars().rev().take_while(|c| *c != '.').collect::<String>()) }
-//             None => { None }
-//         }
-//     }
-
-//     fn value_name(&self) -> Option<String> {
-//         match &self.name {
-//             Some(name) => { Some(name.to_string_lossy().into_owned()) }
-//             None => { None }
-//         }
-//     }
-// }
 
 impl Ord for CoreFile {
     fn cmp(&self, other: &Self) -> Ordering {

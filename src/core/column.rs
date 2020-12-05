@@ -35,12 +35,6 @@ impl FileColumn {
     }
 }
 
-// impl PartialOrd for FilkeC {
-//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//         Some(self.cmp(other))
-//     }
-// }
-
 impl FromStr for FileColumn {
     type Err = ();
 
@@ -87,46 +81,4 @@ impl fmt::Display for FileColumn {
         Debug::fmt(self, f)
     }
 }
-
-// #[derive(Debug, AsStaticStr, EnumIter)]
-// pub enum Column {
-//     Name,
-//     Path,
-//     Type,
-//     FileExtension,
-//     Size,
-//     AbsolutePath,
-//     Created
-// }
-
-
-// impl Column {
-//     pub fn iterator() -> Iter<'static, Column> {
-//         [Column::Name, Column::Path, Column::Type, Column::FileExtension, Column::Size, Column::AbsolutePath, Column::Created].iter()
-//     }
-// }
-
-// impl FromStr for Column {
-//     type Err = ();
-
-//     fn from_str(input: &str) -> Result<Column, Self::Err> {
-//         let str: &str = &input.to_ascii_lowercase();
-//         match str {
-//             "name"  => Ok(Column::Name),
-//             "path"  => Ok(Column::Path),
-//             "type"  => Ok(Column::Type),
-//             "file_extension" | "fileextension" => Ok(Column::FileExtension),
-//             "size" => Ok(Column::Size),
-//             "absolutepath" | "absolute_path" => Ok(Column::AbsolutePath),
-//             _ => Err(()),
-//         }
-//     }
-// }
-
-
-// impl fmt::Display for Column {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         Debug::fmt(self, f)
-//     }
-// }
 

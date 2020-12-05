@@ -1,66 +1,66 @@
-1         , 2   , 3                                    , 4
-.git      , dir , AppAuth-iOS                          , dir
-sql       , dir , AppAuth-iOS                          , dir
-src       , dir , AppAuth-iOS                          , dir
-target    , dir , AppAuth-iOS                          , dir
-test      , dir , AppAuth-iOS                          , dir
-.git      , dir , ConsoleApp1                          , dir
-sql       , dir , ConsoleApp1                          , dir
-src       , dir , ConsoleApp1                          , dir
-target    , dir , ConsoleApp1                          , dir
-test      , dir , ConsoleApp1                          , dir
-.git      , dir , loading-timer                        , dir
-sql       , dir , loading-timer                        , dir
-src       , dir , loading-timer                        , dir
-target    , dir , loading-timer                        , dir
-test      , dir , loading-timer                        , dir
-.git      , dir , pasteline                            , dir
-sql       , dir , pasteline                            , dir
-src       , dir , pasteline                            , dir
-target    , dir , pasteline                            , dir
-test      , dir , pasteline                            , dir
-.gitignore, file, rev3.bundle                          , file
-Cargo.lock, file, rev3.bundle                          , file
-Cargo.toml, file, rev3.bundle                          , file
-README.md , file, rev3.bundle                          , file
-temp.csv  , file, rev3.bundle                          , file
-.gitignore, file, rev4.bundle                          , file
-Cargo.lock, file, rev4.bundle                          , file
-Cargo.toml, file, rev4.bundle                          , file
-README.md , file, rev4.bundle                          , file
-temp.csv  , file, rev4.bundle                          , file
-.gitignore, file, rev5.bundle                          , file
-Cargo.lock, file, rev5.bundle                          , file
-Cargo.toml, file, rev5.bundle                          , file
-README.md , file, rev5.bundle                          , file
-temp.csv  , file, rev5.bundle                          , file
-.gitignore, file, rev6.bundle                          , file
-Cargo.lock, file, rev6.bundle                          , file
-Cargo.toml, file, rev6.bundle                          , file
-README.md , file, rev6.bundle                          , file
-temp.csv  , file, rev6.bundle                          , file
-.git      , dir , reversedictionary                    , dir
-sql       , dir , reversedictionary                    , dir
-src       , dir , reversedictionary                    , dir
-target    , dir , reversedictionary                    , dir
-test      , dir , reversedictionary                    , dir
-.git      , dir , reversedictionary-sub                , dir
-sql       , dir , reversedictionary-sub                , dir
-src       , dir , reversedictionary-sub                , dir
-target    , dir , reversedictionary-sub                , dir
-test      , dir , reversedictionary-sub                , dir
-.gitignore, file, revmod.bundle                        , file
-Cargo.lock, file, revmod.bundle                        , file
-Cargo.toml, file, revmod.bundle                        , file
-README.md , file, revmod.bundle                        , file
-temp.csv  , file, revmod.bundle                        , file
-.git      , dir , systemSQL                            , dir
-sql       , dir , systemSQL                            , dir
-src       , dir , systemSQL                            , dir
-target    , dir , systemSQL                            , dir
-test      , dir , systemSQL                            , dir
-.git      , dir , Visitors and Query Stuff (2020-11-07), dir
-sql       , dir , Visitors and Query Stuff (2020-11-07), dir
-src       , dir , Visitors and Query Stuff (2020-11-07), dir
-target    , dir , Visitors and Query Stuff (2020-11-07), dir
-test      , dir , Visitors and Query Stuff (2020-11-07), dir
+1,2,3,4
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""AppAuth-iOS""))","Name(Some(""AppAuth-iOS""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""AppAuth-iOS""))","Name(Some(""AppAuth-iOS""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""AppAuth-iOS""))","Name(Some(""AppAuth-iOS""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""AppAuth-iOS""))","Name(Some(""AppAuth-iOS""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""AppAuth-iOS""))","Name(Some(""AppAuth-iOS""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""ConsoleApp1""))","Name(Some(""ConsoleApp1""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""ConsoleApp1""))","Name(Some(""ConsoleApp1""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""ConsoleApp1""))","Name(Some(""ConsoleApp1""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""ConsoleApp1""))","Name(Some(""ConsoleApp1""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""ConsoleApp1""))","Name(Some(""ConsoleApp1""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""loading-timer""))","Name(Some(""loading-timer""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""loading-timer""))","Name(Some(""loading-timer""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""loading-timer""))","Name(Some(""loading-timer""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""loading-timer""))","Name(Some(""loading-timer""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""loading-timer""))","Name(Some(""loading-timer""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""pasteline""))","Name(Some(""pasteline""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""pasteline""))","Name(Some(""pasteline""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""pasteline""))","Name(Some(""pasteline""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""pasteline""))","Name(Some(""pasteline""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""pasteline""))","Name(Some(""pasteline""))"
+"Name(Some("".gitignore""))","Name(Some("".gitignore""))","Name(Some(""rev3.bundle""))","Name(Some(""rev3.bundle""))"
+"Name(Some(""Cargo.lock""))","Name(Some(""Cargo.lock""))","Name(Some(""rev3.bundle""))","Name(Some(""rev3.bundle""))"
+"Name(Some(""Cargo.toml""))","Name(Some(""Cargo.toml""))","Name(Some(""rev3.bundle""))","Name(Some(""rev3.bundle""))"
+"Name(Some(""README.md""))","Name(Some(""README.md""))","Name(Some(""rev3.bundle""))","Name(Some(""rev3.bundle""))"
+"Name(Some(""temp.csv""))","Name(Some(""temp.csv""))","Name(Some(""rev3.bundle""))","Name(Some(""rev3.bundle""))"
+"Name(Some("".gitignore""))","Name(Some("".gitignore""))","Name(Some(""rev4.bundle""))","Name(Some(""rev4.bundle""))"
+"Name(Some(""Cargo.lock""))","Name(Some(""Cargo.lock""))","Name(Some(""rev4.bundle""))","Name(Some(""rev4.bundle""))"
+"Name(Some(""Cargo.toml""))","Name(Some(""Cargo.toml""))","Name(Some(""rev4.bundle""))","Name(Some(""rev4.bundle""))"
+"Name(Some(""README.md""))","Name(Some(""README.md""))","Name(Some(""rev4.bundle""))","Name(Some(""rev4.bundle""))"
+"Name(Some(""temp.csv""))","Name(Some(""temp.csv""))","Name(Some(""rev4.bundle""))","Name(Some(""rev4.bundle""))"
+"Name(Some("".gitignore""))","Name(Some("".gitignore""))","Name(Some(""rev5.bundle""))","Name(Some(""rev5.bundle""))"
+"Name(Some(""Cargo.lock""))","Name(Some(""Cargo.lock""))","Name(Some(""rev5.bundle""))","Name(Some(""rev5.bundle""))"
+"Name(Some(""Cargo.toml""))","Name(Some(""Cargo.toml""))","Name(Some(""rev5.bundle""))","Name(Some(""rev5.bundle""))"
+"Name(Some(""README.md""))","Name(Some(""README.md""))","Name(Some(""rev5.bundle""))","Name(Some(""rev5.bundle""))"
+"Name(Some(""temp.csv""))","Name(Some(""temp.csv""))","Name(Some(""rev5.bundle""))","Name(Some(""rev5.bundle""))"
+"Name(Some("".gitignore""))","Name(Some("".gitignore""))","Name(Some(""rev6.bundle""))","Name(Some(""rev6.bundle""))"
+"Name(Some(""Cargo.lock""))","Name(Some(""Cargo.lock""))","Name(Some(""rev6.bundle""))","Name(Some(""rev6.bundle""))"
+"Name(Some(""Cargo.toml""))","Name(Some(""Cargo.toml""))","Name(Some(""rev6.bundle""))","Name(Some(""rev6.bundle""))"
+"Name(Some(""README.md""))","Name(Some(""README.md""))","Name(Some(""rev6.bundle""))","Name(Some(""rev6.bundle""))"
+"Name(Some(""temp.csv""))","Name(Some(""temp.csv""))","Name(Some(""rev6.bundle""))","Name(Some(""rev6.bundle""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""reversedictionary""))","Name(Some(""reversedictionary""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""reversedictionary""))","Name(Some(""reversedictionary""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""reversedictionary""))","Name(Some(""reversedictionary""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""reversedictionary""))","Name(Some(""reversedictionary""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""reversedictionary""))","Name(Some(""reversedictionary""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""reversedictionary-sub""))","Name(Some(""reversedictionary-sub""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""reversedictionary-sub""))","Name(Some(""reversedictionary-sub""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""reversedictionary-sub""))","Name(Some(""reversedictionary-sub""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""reversedictionary-sub""))","Name(Some(""reversedictionary-sub""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""reversedictionary-sub""))","Name(Some(""reversedictionary-sub""))"
+"Name(Some("".gitignore""))","Name(Some("".gitignore""))","Name(Some(""revmod.bundle""))","Name(Some(""revmod.bundle""))"
+"Name(Some(""Cargo.lock""))","Name(Some(""Cargo.lock""))","Name(Some(""revmod.bundle""))","Name(Some(""revmod.bundle""))"
+"Name(Some(""Cargo.toml""))","Name(Some(""Cargo.toml""))","Name(Some(""revmod.bundle""))","Name(Some(""revmod.bundle""))"
+"Name(Some(""README.md""))","Name(Some(""README.md""))","Name(Some(""revmod.bundle""))","Name(Some(""revmod.bundle""))"
+"Name(Some(""temp.csv""))","Name(Some(""temp.csv""))","Name(Some(""revmod.bundle""))","Name(Some(""revmod.bundle""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""systemSQL""))","Name(Some(""systemSQL""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""systemSQL""))","Name(Some(""systemSQL""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""systemSQL""))","Name(Some(""systemSQL""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""systemSQL""))","Name(Some(""systemSQL""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""systemSQL""))","Name(Some(""systemSQL""))"
+"Name(Some("".git""))","Name(Some("".git""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))"
+"Name(Some(""sql""))","Name(Some(""sql""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))"
+"Name(Some(""src""))","Name(Some(""src""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))"
+"Name(Some(""target""))","Name(Some(""target""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))"
+"Name(Some(""test""))","Name(Some(""test""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))","Name(Some(""Visitors and Query Stuff (2020-11-07)""))"
