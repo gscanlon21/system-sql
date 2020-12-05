@@ -1,6 +1,6 @@
 
 use sqlparser::{ast::*, dialect::MsSqlDialect, parser::Parser, test_utils};
-use std::{collections::HashMap, fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
+use std::{collections::HashMap, ffi::OsString, fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
 use crate::{core::{column::*, file::*, dialect, error::CoreError, expr_result::ExprResult}, enumerable};
 use crate::display::*;
 use strum::IntoEnumIterator;
@@ -99,8 +99,8 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     for table_with_join in select.from {
         let (table_name, files) = consume_relation(table_with_join.relation)?;
         let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
-        let mut result_columns: Vec<Vec<FileColumn>> = hash_map.iter().map(|f| 
-            f.1.clone().iter().map(|cf| cf.name()).collect()
+        let mut result_columns: Vec<Vec<FileColumn>> = hash_map.iter().flat_map(|f| 
+            f.1.clone().iter().map(|cf| cf.columns()).collect::<Vec<Vec<FileColumn>>>()
         ).collect();
 
         for join in table_with_join.joins {
@@ -112,23 +112,7 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
                             hash_map.insert(join_table_name, join_files.clone());
 
                             let expr_result = consume_expr(expr, Some(&mut hash_map))?;
-                            /*
-                            BinaryOp {
-                                left: CompoundIdentifier(
-                                    [
-                                        Ident { value: "Files2", quote_style: None, },
-                                        Ident { value: "Type", quote_style: None, },
-                                    ],
-                                ),
-                                op: Eq,
-                                right: CompoundIdentifier(
-                                    [
-                                        Ident { value: "Files", quote_style: None, },
-                                        Ident { value: "Type", quote_style: None, },
-                                    ],
-                                ),
-                            },
-                            */
+
                             println!("expr_result: {:#?}", expr_result);
 
                             match expr_result {
@@ -138,7 +122,37 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
                                     hash_map.remove(&right_table_name);
 
                                     result_columns = join_result.iter().map(|f| 
-                                        f.clone().iter().map(|cf| cf.name()).collect()
+                                        f.clone().iter().flat_map(|cf| cf.columns()).collect()
+                                    ).collect();
+                                }
+                                _ => { unimplemented!() }
+                            }
+                        }
+                        _ => { unimplemented!() }
+                    }
+                }
+                JoinOperator::LeftOuter(constraint) => {
+                    match constraint {
+                        sqlparser::ast::JoinConstraint::On(expr) => {
+                            hash_map.insert(join_table_name, join_files.clone());
+
+                            let expr_result = consume_expr(expr, Some(&mut hash_map))?;
+
+                            println!("expr_result: {:#?}", expr_result);
+
+                            match expr_result {
+                                ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)) => {
+                                    let join_result = enumerable::left_join(files.clone(), join_files, left, right, Box::new(|f: CoreFile, jf: Option<CoreFile>| vec![Some(f), jf]));
+                                    hash_map.remove(&left_table_name);
+                                    hash_map.remove(&right_table_name);
+
+                                    result_columns = join_result.iter().map(|f| 
+                                        f.clone().iter().flat_map(|cf|
+                                            match cf {
+                                                Some(cf) => { cf.columns() }
+                                                None => { vec![FileColumn::Null] }
+                                            } 
+                                        ).collect()
                                     ).collect();
                                 }
                                 _ => { unimplemented!() }
@@ -224,6 +238,14 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
                     }
                     (ExprResult::CompoundSelect(left_table_name, left), ExprResult::CompoundSelect(right_table_name, right)) => {
                         Ok(ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)))
+                    }
+                    (ExprResult::Value(left), ExprResult::Value(right)) => {
+                        let left = left.to_string();
+                        Ok(ExprResult::BinaryOp(
+                            ("".to_owned(), Box::new(|f| FileColumn::Name(Some(OsString::from(left))))), 
+                            op, 
+                            ("".to_owned(), Box::new(|f| FileColumn::Name(Some(OsString::from(right.clone().to_string())))))
+                        ))
                     }
                     _ => { unimplemented!() }
                 }

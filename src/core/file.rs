@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, error::Error, ffi::OsString, fmt::{Debug, Display}, fmt::{self, Formatter}, fs::{self, DirEntry, File, Metadata}, io, iter::FromIterator, path::PathBuf, slice::Iter, str::FromStr};
+use std::{cmp::Ordering, error::Error, ffi::OsString, path::Path, fmt::{Debug, Display}, fmt::{self, Formatter}, fs::{self, DirEntry, File, Metadata}, io, iter::FromIterator, path::PathBuf, slice::Iter, str::FromStr};
 use sqlparser::{ast::{BinaryOperator, Expr, Ident, Query}, parser::ParserError};
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
@@ -66,8 +66,9 @@ impl FileColumnValues for CoreFile {
     }
     
     fn absolute_path(&self) -> FileColumn {
-        todo!()
+        self.path()
     }
+
     fn name(&self) -> FileColumn {
         FileColumn::Name(self.name.clone())
     }
@@ -87,11 +88,14 @@ impl FileColumnValues for CoreFile {
     }
 
     fn file_extension(&self) -> FileColumn {
-        todo!()
+        FileColumn::FileExtension(match &self.name {
+            Some(name) => { Path::new(&name.to_string_lossy().to_string()).extension().map_or(None, |f| Some(f.to_owned())) }
+            None => { None }
+        })
     }
 
     fn created(&self) -> FileColumn {
-        todo!()
+        FileColumn::Created(self.metadata().unwrap().created().ok())
     }
 }
 
@@ -105,7 +109,20 @@ impl FileColumnValue for CoreFile {
             FileColumn::Size(_) => { self.size() }
             FileColumn::AbsolutePath(_) => { self.absolute_path() }
             FileColumn::Created(_) => { self.created() }
+            _ => { FileColumn::Null }
         }
+    }
+
+    fn columns(&self) -> Vec<FileColumn> {
+        vec![
+            self.name(),
+            self.path(),
+            self.file_type(),
+            self.file_extension(),
+            self.size(),
+            self.absolute_path(),
+            self.created()
+        ]
     }
 }
 

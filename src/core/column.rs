@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, error::Error, str::FromStr, ffi::OsString, fmt::{Debug, Display}, fmt, fs::{self, DirEntry, File, Metadata}, io, iter::FromIterator, path::PathBuf, slice::Iter};
+use std::{cmp::Ordering, error::Error, ffi::OsString, time::SystemTime, fmt::{Debug, Display}, fmt, fs::{self, DirEntry, File, Metadata}, io, iter::FromIterator, path::PathBuf, slice::Iter, str::FromStr};
 use sqlparser::{parser::ParserError, ast::Query};
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
@@ -6,6 +6,7 @@ use super::file::file_type::FileType;
 
 pub trait FileColumnValue {
     fn column(&self, column: &FileColumn) -> FileColumn;
+    fn columns(&self) -> Vec<FileColumn>;
 }
 
 pub trait FileColumnValues {
@@ -18,15 +19,16 @@ pub trait FileColumnValues {
     fn created(&self) -> FileColumn;
 }
 
-#[derive(Debug, AsStaticStr, EnumIter, PartialEq, PartialOrd, Hash, Eq, Ord)]
+#[derive(Debug, AsStaticStr, EnumIter, PartialEq, PartialOrd, Hash, Eq, Ord, Clone)]
 pub enum FileColumn {
+    Null,
     Name(Option<OsString>),
     Path(Option<PathBuf>),
     Type(Option<FileType>),
-    FileExtension(Option<String>),
+    FileExtension(Option<OsString>),
     Size(Option<u64>),
     AbsolutePath(Option<PathBuf>),
-    Created(Option<u32>)
+    Created(Option<SystemTime>)
 }
 
 impl FileColumn {
