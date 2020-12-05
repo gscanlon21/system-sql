@@ -1,7 +1,7 @@
 
 use sqlparser::{ast::*, dialect::MsSqlDialect, parser::Parser, test_utils};
 use std::{collections::HashMap, fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
-use crate::core::{column::Column, column::FileColumn, dialect::CoreDialect, error::CoreError, file::ColumnDisplay, expr_result::ExprResult, file::{ColumnValue, CoreFile}};
+use crate::core::{column::*, file::*, dialect::CoreDialect, error::CoreError, expr_result::ExprResult};
 use crate::display::*;
 use strum::IntoEnumIterator;
 
@@ -32,7 +32,8 @@ pub fn parse_sql(sql: &str, dialect: CoreDialect) -> Result<(), CoreError> {
 pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
     match statement {
         Statement::Query(query) => {
-            consume_query(*query)?;
+            let query = consume_query(*query)?;
+            println!("{:#?}", query);
 
             Ok(())
         }
@@ -40,7 +41,7 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
             let files = consume_query(*source)?;
 
             let columns = columns.into_iter().filter_map(|c|
-                Column::from_str(c.value.as_str()).ok()
+                FileColumn::from_str(c.value.as_str()).ok()
             ).collect();
 
             if let Some(table_name) = table_name.0.first() {
@@ -55,11 +56,11 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
         }
         Statement::Update { table_name, assignments, selection } => { 
             let table_name = &table_name.0[0].value;
-            let files = consume_table_name(table_name).unwrap();
+            let files = consume_table_name(table_name)?;
 
             if let Some(expr) = selection {
                 let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name.clone(), files)].iter().cloned().collect();
-                let result = consume_expr(expr.clone(), Some(&mut hash_map));
+                let result = consume_expr(expr.clone(), Some(&mut hash_map))?;
             }
 
             for assignment in &assignments {
@@ -69,7 +70,7 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
             Ok(())
         }
         Statement::ShowColumns { extended, full, table_name, filter } => { 
-            let columns = Column::iterator().map(|c| c.to_string()).collect::<Vec<String>>();
+            let columns = FileColumn::iterator().map(|c| c.to_string()).collect::<Vec<String>>();
             println!("Columns: {}", columns.join(", "));
 
             Ok(())
@@ -79,7 +80,7 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
 }
 
 
-pub fn consume_query(query: Query) -> Result<Vec<Vec<CoreFile>>, CoreError> {
+pub fn consume_query(query: Query) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     match query.body {
         SetExpr::Select(select) => { 
             let files = consume_select(*select)?;
@@ -115,11 +116,12 @@ fn inner_join<TLeft, TRight, TKey, TResult>(left: Vec<TLeft>, right: Vec<TRight>
     results
 }
 
-fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
+fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     for table_with_join in select.from {
         let (table_name, files) = consume_relation(table_with_join.relation)?;
         let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
-        let mut result_files: Vec<Vec<CoreFile>> = hash_map.iter().map(|f| f.1.clone()).collect();
+        let mut result_columns: Vec<Vec<FileColumn>> = hash_map.iter().map(|f| 
+            f.1.clone().iter().map(|cf| cf.name()).collect()).collect();
 
         for join in table_with_join.joins {
             let (join_table_name, join_files) = consume_relation(join.relation.clone())?;
@@ -130,6 +132,23 @@ fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
                             hash_map.insert(join_table_name, join_files.clone());
 
                             let expr_result = consume_expr(expr, Some(&mut hash_map))?;
+                            /*
+                            BinaryOp {
+                                left: CompoundIdentifier(
+                                    [
+                                        Ident { value: "Files2", quote_style: None, },
+                                        Ident { value: "Type", quote_style: None, },
+                                    ],
+                                ),
+                                op: Eq,
+                                right: CompoundIdentifier(
+                                    [
+                                        Ident { value: "Files", quote_style: None, },
+                                        Ident { value: "Type", quote_style: None, },
+                                    ],
+                                ),
+                            },
+                            */
                             println!("expr_result: {:#?}", expr_result);
 
                             match expr_result {
@@ -138,7 +157,9 @@ fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
                                     hash_map.remove(&left_table_name);
                                     hash_map.remove(&right_table_name);
 
-                                    result_files = join_result;
+                                    result_columns = join_result.iter().map(|f| 
+                                        f.clone().iter().map(|cf| cf.name()).collect()
+                                    ).collect();
                                     //*hash_map.entry(right_table_name).or_default() = join_result.iter().map(|f| f.1.clone()).collect();
                                 }
                                 _ => { unimplemented!() }
@@ -152,8 +173,8 @@ fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
         }
 
         if select.distinct {
-            result_files.sort();
-            result_files.dedup()
+            //result_columns.sort();
+            result_columns.dedup()
         }
 
         if let Some(ref top) = select.top  {
@@ -168,10 +189,10 @@ fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
                     Value::Null => { None }
                 };
 
-                result_files = if let Some(quantity) = quantity {
-                    result_files.into_iter().take(quantity).collect()
+                result_columns = if let Some(quantity) = quantity {
+                    result_columns.into_iter().take(quantity).collect()
                 } else {
-                    result_files
+                    result_columns
                 }
             }
         }
@@ -180,7 +201,7 @@ fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
             //consume_select_item(projction);
         }
 
-        return Ok(result_files)
+        return Ok(result_columns)
     }
 
 
@@ -199,16 +220,16 @@ fn consume_select(select: Select) -> Result<Vec<Vec<CoreFile>>, CoreError> {
     return Err(CoreError::from("There's nothing here!"));
 }
 
-fn consume_select_item(select_item: SelectItem) {
-    match select_item {
-        SelectItem::UnnamedExpr(expr) => {
-            consume_expr(expr, None);
-        }
-        SelectItem::ExprWithAlias { expr, alias } => {}
-        SelectItem::QualifiedWildcard(_) => {}
-        SelectItem::Wildcard => {}
-    }
-}
+// fn consume_select_item(select_item: SelectItem) {
+//     match select_item {
+//         SelectItem::UnnamedExpr(expr) => {
+//             consume_expr(expr, None).unwrap();
+//         }
+//         SelectItem::ExprWithAlias { expr, alias } => {}
+//         SelectItem::QualifiedWildcard(_) => {}
+//         SelectItem::Wildcard => {}
+//     }
+// }
 
 fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>) -> Result<ExprResult, CoreError> {
     match expr {
@@ -217,7 +238,7 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
             let column = idents.pop().unwrap();
             let column_select = match consume_expr_ident(column) {
                 Ok(ExprResult::Select(select)) => { Ok(select) }
-                _ => { Err(()) }
+                _ => { Err("No match arm provided in column_select") }
             }?;
 
             let table = idents.pop().unwrap();
@@ -321,8 +342,8 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
 }
 
 fn consume_expr_ident(ident: Ident) -> Result<ExprResult, CoreError> {    
-    match Column::from_str(ident.value.as_str()) {
-        Ok(column) => { Ok(ExprResult::Select(Box::new(move |c| Value::SingleQuotedString(c.value(&column))))) }
+    match FileColumn::from_str(ident.value.as_str()) {
+        Ok(column) => { Ok(ExprResult::Select(Box::new(move |c| c.column(&column)))) }
         Err(e) => { Err(CoreError::from(e)) }
     }
 }
@@ -366,7 +387,8 @@ fn consume_relation(relation: TableFactor) -> Result<(String, Vec<CoreFile>), Co
     match relation {
         TableFactor::Table { name, alias, args, with_hints } => {
             if let Some(table_name) = name.0.first() {
-                return Ok((table_name.value.clone(), consume_table_name(table_name.value.as_str())?));
+                let table_alias = if alias.is_some() { alias.unwrap().name.value } else { table_name.value.clone() };
+                return Ok((table_alias, consume_table_name(table_name.value.as_str())?));
             }
             panic!()
         }

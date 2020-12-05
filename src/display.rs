@@ -6,11 +6,11 @@ use sqlparser::ast::Expr::Value;
 use std::env;
 use std::vec;
 use std::path::Path;
-use crate::core::{column::Column, file::{ColumnDisplay, CoreFile}};
+use crate::core::{column::*, file::*};
 use serde_json::{json, to_string};
 
-pub fn write_csv(columns: Vec<Column>, files: Vec<Vec<CoreFile>>, file_path: &String) {
-    println!("csv files: {:#?}", files.clone());
+pub fn write_csv(columns: Vec<FileColumn>, files: Vec<Vec<FileColumn>>, file_path: &String) {
+    //println!("csv files: {:#?}", files.clone());
 
     let mut wtr = csv::Writer::from_path(file_path).unwrap();
                     
@@ -21,7 +21,7 @@ pub fn write_csv(columns: Vec<Column>, files: Vec<Vec<CoreFile>>, file_path: &St
         let mut cells: Vec<String> = Vec::new();
         for file in rows {
             for column in &columns {
-                cells.push(file.display(column));
+                cells.push(file.to_string());
             }
         }
         
@@ -32,7 +32,7 @@ pub fn write_csv(columns: Vec<Column>, files: Vec<Vec<CoreFile>>, file_path: &St
     wtr.flush().unwrap();
 }
 
-pub fn write_json(columns: Vec<Column>, files: Vec<Vec<CoreFile>>, file_path: &String) {
+pub fn write_json(columns: Vec<FileColumn>, files: Vec<Vec<FileColumn>>, file_path: &String) {
     let json = json!(files);
     //println!("{:#?}", json);
     print!("{}", json);

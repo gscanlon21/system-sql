@@ -2,19 +2,19 @@ use std::{collections::HashMap, fmt};
 
 use sqlparser::ast;
 
-use super::file::CoreFile;
+use super::{file::*, column::*};
 
 
 pub enum ExprResult {
     None,
-    CompoundSelect(String, Box<dyn Fn(&CoreFile) -> ast::Value>),
-    Select(Box<dyn Fn(&CoreFile) -> ast::Value>),
+    CompoundSelect(String, Box<dyn Fn(&CoreFile) -> FileColumn>),
+    Select(Box<dyn Fn(&CoreFile) -> FileColumn>),
     Assignment(CoreFile),
     Value(ast::Value),
     Filter(bool),
     Filter2(Box<dyn Fn(CoreFile, CoreFile) -> ast::Value>),
     Expr(ast::Expr),
-    BinaryOp((String, Box<dyn Fn(&CoreFile) -> ast::Value>), ast::BinaryOperator, (String, Box<dyn Fn(&CoreFile) -> ast::Value>))
+    BinaryOp((String, Box<dyn Fn(&CoreFile) -> FileColumn>), ast::BinaryOperator, (String, Box<dyn Fn(&CoreFile) -> FileColumn>))
 }
 
 impl fmt::Debug for ExprResult {

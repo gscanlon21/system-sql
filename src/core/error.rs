@@ -1,5 +1,5 @@
 use std::{cmp::Ordering, error::Error, str::FromStr, ffi::OsString, fmt::{Debug, Display}, fmt, fs::{self, DirEntry, File, FileType, Metadata}, io, iter::FromIterator, path::PathBuf, slice::Iter};
-use sqlparser::{parser::ParserError, ast::Query};
+use sqlparser::parser;
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
 
@@ -10,6 +10,8 @@ pub enum CoreError {
     GeneralError(String),
     UnknownError
 }
+
+impl Error for CoreError {}
 
 impl From<()> for CoreError {
     fn from(e: ()) -> Self {
@@ -23,8 +25,8 @@ impl From<io::Error> for CoreError {
     }
 }
 
-impl From<ParserError> for CoreError {
-    fn from(e: ParserError) -> Self {
+impl From<parser::ParserError> for CoreError {
+    fn from(e: parser::ParserError) -> Self {
         CoreError::ParserError(format!("{}", e))
     }
 }
