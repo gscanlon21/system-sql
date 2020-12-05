@@ -3,6 +3,7 @@
 mod core;
 mod query;
 mod display;
+mod enumerable;
 
 #[macro_use]
 extern crate strum_macros;

@@ -1,11 +1,11 @@
 
 use sqlparser::{ast::*, dialect::MsSqlDialect, parser::Parser, test_utils};
 use std::{collections::HashMap, fmt::{self, Display}, fs::{self, DirEntry}, str::FromStr};
-use crate::core::{column::*, file::*, dialect::CoreDialect, error::CoreError, expr_result::ExprResult};
+use crate::{core::{column::*, file::*, dialect, error::CoreError, expr_result::ExprResult}, enumerable};
 use crate::display::*;
 use strum::IntoEnumIterator;
 
-pub fn parse_sql(sql: &str, dialect: CoreDialect) -> Result<(), CoreError> {
+pub fn parse_sql(sql: &str, dialect: dialect::CoreDialect) -> Result<(), CoreError> {
     let dialect = dialect.dialect; // Supports [bracketed] table names which makes it easier to read from directories: "SELECT * FROM [./]"
 
     let parse_result = Parser::parse_sql(&*dialect, &sql);
@@ -31,12 +31,14 @@ pub fn parse_sql(sql: &str, dialect: CoreDialect) -> Result<(), CoreError> {
 
 pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
     match statement {
+        // SELECT columns FROM table_name ...
         Statement::Query(query) => {
             let query = consume_query(*query)?;
             println!("{:#?}", query);
 
             Ok(())
         }
+        // INSERT INTO name ...
         Statement::Insert { table_name, columns, source } => {
             let files = consume_query(*source)?;
 
@@ -54,6 +56,7 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
 
             Ok(())
         }
+        // UPDATE table_name SET column = value ...
         Statement::Update { table_name, assignments, selection } => { 
             let table_name = &table_name.0[0].value;
             let files = consume_table_name(table_name)?;
@@ -69,6 +72,7 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
 
             Ok(())
         }
+        // SHOW COLUMNS FROM table_name
         Statement::ShowColumns { extended, full, table_name, filter } => { 
             let columns = FileColumn::iterator().map(|c| c.to_string()).collect::<Vec<String>>();
             println!("Columns: {}", columns.join(", "));
@@ -91,37 +95,13 @@ pub fn consume_query(query: Query) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     }
 }
 
-fn inner_join<TLeft, TRight, TKey, TResult>(left: Vec<TLeft>, right: Vec<TRight>, left_key_selector: Box<dyn Fn(&TLeft) -> TKey>, right_key_selector: Box<dyn Fn(&TRight) -> TKey>, result_selector: Box<dyn Fn(TRight, TLeft) -> TResult>) -> Vec<TResult> 
-    where TKey: std::cmp::Eq + std::hash::Hash + std::fmt::Debug, TRight: Clone + std::fmt::Debug, TLeft: Clone, TResult: std::fmt::Debug {
-    let mut right_iter = right.iter();
-
-    let mut results = Vec::new();
-    let mut lookup: HashMap<TKey, Vec<TLeft>> = HashMap::new();
-    for item in left
-    {
-        let key = left_key_selector(&item);
-        let values = lookup.entry(key).or_insert(Vec::new());
-        values.push(item);
-    }
-    while let Some(right_item) = right_iter.next() {
-        let g: Option<&Vec<TLeft>> = lookup.get(&right_key_selector(&right_item));
-        if let Some(g) = g {
-            for i in g
-            {
-                results.push(result_selector(right_item.clone(), i.clone()));
-            }
-        }
-    }
-
-    results
-}
-
 fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     for table_with_join in select.from {
         let (table_name, files) = consume_relation(table_with_join.relation)?;
         let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
         let mut result_columns: Vec<Vec<FileColumn>> = hash_map.iter().map(|f| 
-            f.1.clone().iter().map(|cf| cf.name()).collect()).collect();
+            f.1.clone().iter().map(|cf| cf.name()).collect()
+        ).collect();
 
         for join in table_with_join.joins {
             let (join_table_name, join_files) = consume_relation(join.relation.clone())?;
@@ -153,22 +133,21 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
 
                             match expr_result {
                                 ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)) => {
-                                    let join_result = inner_join(files.clone(), join_files, left, right, Box::new(|jf: CoreFile, f: CoreFile| vec![f, jf]));
+                                    let join_result = enumerable::inner_join(files.clone(), join_files, left, right, Box::new(|f: CoreFile, jf: CoreFile| vec![f, jf]));
                                     hash_map.remove(&left_table_name);
                                     hash_map.remove(&right_table_name);
 
                                     result_columns = join_result.iter().map(|f| 
                                         f.clone().iter().map(|cf| cf.name()).collect()
                                     ).collect();
-                                    //*hash_map.entry(right_table_name).or_default() = join_result.iter().map(|f| f.1.clone()).collect();
                                 }
                                 _ => { unimplemented!() }
                             }
                         }
-                        _ => {}
+                        _ => { unimplemented!() }
                     }
                 }
-                _ => {}
+                _ => { unimplemented!() }
             }
         }
 

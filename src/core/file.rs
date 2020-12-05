@@ -36,7 +36,7 @@ pub mod file_type {
     }
 }
  
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct CoreFile {
     pub name: Option<OsString>,
     pub path: Option<PathBuf>,
@@ -132,26 +132,6 @@ impl Display for CoreFile {
         return Ok(());
     }
 }
-
-impl Ord for CoreFile {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.path.cmp(&other.path)
-    }
-}
-
-impl PartialOrd for CoreFile {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for CoreFile {
-    fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
-    }
-}
-
-impl Eq for CoreFile {}
 
 impl From<DirEntry> for CoreFile {
     fn from(dir: DirEntry) -> Self {
