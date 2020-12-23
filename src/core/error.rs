@@ -6,18 +6,26 @@ use strum::{AsStaticRef, IntoEnumIterator};
 #[derive(Debug, Clone, PartialEq)]
 pub enum CoreError {
     IOError(String),
-    ParserError(String),
+    ParserError(parser::ParserError),
+    CsvError(String),
     GeneralError(String),
-    UnknownError
+    UnknownError(String, u32, u32)
 }
 
 impl Error for CoreError {}
 
 impl From<()> for CoreError {
     fn from(e: ()) -> Self {
-        CoreError::UnknownError
+        CoreError::GeneralError("Unknown Error".to_string())
     }
 }
+
+impl From<csv::Error> for CoreError {
+    fn from(e: csv::Error) -> Self {
+        CoreError::IOError(format!("{}", e))
+    }
+}
+
 
 impl From<io::Error> for CoreError {
     fn from(e: io::Error) -> Self {
@@ -27,7 +35,7 @@ impl From<io::Error> for CoreError {
 
 impl From<parser::ParserError> for CoreError {
     fn from(e: parser::ParserError) -> Self {
-        CoreError::ParserError(format!("{}", e))
+        CoreError::ParserError(e)
     }
 }
 
@@ -39,14 +47,14 @@ impl From<&str> for CoreError {
 
 impl fmt::Display for CoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Error: {}",
+        write!(f,
+            "error: {}",
             match self {
-                CoreError::IOError(s) => s,
-                CoreError::ParserError(s) => s,
-                CoreError::GeneralError(s) => s,
-                CoreError::UnknownError => "Unknown, please change to known error",
+                CoreError::IOError(e) => e.to_string(),
+                CoreError::ParserError(e) => e.to_string(),
+                CoreError::CsvError(e) => e.to_string(),
+                CoreError::GeneralError(e) => e.to_string(),
+                CoreError::UnknownError(filename, line, col) => format!("file {}, line {}, col: {}", filename, line, col),
             }
         )
     }

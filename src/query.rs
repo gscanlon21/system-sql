@@ -5,30 +5,29 @@ use crate::{core::{column::*, file::*, dialect, error::CoreError, expr_result::E
 use crate::display::*;
 use strum::IntoEnumIterator;
 
+/**
+ * Parses and evaluates SQL string
+ * 
+ * The SQL will be executed against the system's files and directories 
+**/
 pub fn parse_sql(sql: &str, dialect: dialect::CoreDialect) -> Result<(), CoreError> {
-    let dialect = dialect.dialect; // Supports [bracketed] table names which makes it easier to read from directories: "SELECT * FROM [./]"
+    let dialect = dialect.dialect;
 
-    let parse_result = Parser::parse_sql(&*dialect, &sql);
+    let parse_result = Parser::parse_sql(&*dialect, &sql)?;
 
-    match parse_result {
-        Ok(statements) => {
-            println!("Raw SQL:\n'{}'", sql);
-            println!("Parse results:\n{:#?}", statements);
+    println!("Raw SQL:\n'{}'", sql);
+    println!("Parse results:\n{:#?}", parse_result);
 
-            for statement in statements {
-                consume_statement(statement)?;
-            }
-
-            Ok(())
-        }
-        Err(e) => {
-            println!("Error during parsing: {:?}", e);
-
-            Err(CoreError::from(e))
-        }
+    for statement in parse_result {
+        consume_statement(statement)?;
     }
+
+    Ok(())
 }
 
+/**
+ * Consumes and executes a SQL statement
+**/
 pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
     match statement {
         // SELECT columns FROM table_name ...
@@ -40,17 +39,24 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
         }
         // INSERT INTO name ...
         Statement::Insert { table_name, columns, source } => {
-            let files = consume_query(*source)?;
+            let mut files = consume_query(*source)?;
 
-            let columns = columns.into_iter().filter_map(|c|
+            // FIXME: When no columns are passed in we should use the default table columns
+            let columns: Vec<FileColumn> = columns.into_iter().filter_map(|c|
                 FileColumn::from_str(c.value.as_str()).ok()
             ).collect();
 
+            files = files.into_iter().map(|row| row.into_iter().filter(|column| 
+                // FIXME: not currently checking the table name, * symbol
+                columns.iter().any(|c| std::mem::discriminant(c) == std::mem::discriminant(column))).collect()
+            ).collect::<Vec<Vec<FileColumn>>>();
+            println!("Files:\n{:#?}", files);
+
             if let Some(table_name) = table_name.0.first() {
                 match table_name.value.chars().rev().take_while(|c| *c != '.').collect::<String>().as_str() {
-                    "vsc" => { write_csv(columns, files, &table_name.value) }
-                    "nosj" => { write_json(columns, files, &table_name.value) }
-                    _ => { println!("Files:\n{:#?}", files) }
+                    "vsc" => { write_csv(columns, files, &table_name.value)? }
+                    "nosj" => { write_json(columns, files, &table_name.value)? }
+                    _ => { println!("Files:\n{:#?}", files); }
                 }
             };
 
@@ -83,7 +89,9 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
     }
 }
 
-
+/**
+ * Consumes and executes a SQL query
+**/
 pub fn consume_query(query: Query) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     match query.body {
         SetExpr::Select(select) => { 
@@ -95,13 +103,19 @@ pub fn consume_query(query: Query) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     }
 }
 
+/**
+ * Consumes and executes a SQL select statement
+**/
 fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     for table_with_join in select.from {
+        // Load the table's files into memory
         let (table_name, files) = consume_relation(table_with_join.relation)?;
-        let mut hash_map: HashMap<String, Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
-        let mut result_columns: Vec<Vec<FileColumn>> = hash_map.iter().flat_map(|f| 
+        let mut hash_map: HashMap<String, /*row*/ Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
+        println!("hash map{:#?}", hash_map);
+        let mut result_columns: /*rows*/ Vec</*columns*/ Vec<FileColumn>> = hash_map.clone().into_iter().flat_map(|f| 
             f.1.clone().iter().map(|cf| cf.columns()).collect::<Vec<Vec<FileColumn>>>()
-        ).collect();
+        ).collect::<Vec<Vec<FileColumn>>>();
+        println!("{:#?}", result_columns);
 
         for join in table_with_join.joins {
             let (join_table_name, join_files) = consume_relation(join.relation.clone())?;
@@ -143,11 +157,13 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
                             match expr_result {
                                 ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)) => {
                                     let join_result = enumerable::left_join(files.clone(), join_files, left, right, Box::new(|f: CoreFile, jf: Option<CoreFile>| vec![Some(f), jf]));
+                                    println!("join_resultt: {:#?}", join_result);
+                                    
                                     hash_map.remove(&left_table_name);
                                     hash_map.remove(&right_table_name);
 
                                     result_columns = join_result.iter().map(|f| 
-                                        f.clone().iter().flat_map(|cf|
+                                        f.iter().flat_map(|cf|
                                             match cf {
                                                 Some(cf) => { cf.columns() }
                                                 None => { vec![FileColumn::Null] }
@@ -213,6 +229,9 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
     return Err(CoreError::from("There's nothing here!"));
 }
 
+/**
+ * Consumes and executes a SQL expression
+**/
 fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>) -> Result<ExprResult, CoreError> {
     match expr {
         Expr::Identifier(ident) => { consume_expr_ident(ident) }
@@ -240,11 +259,10 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
                         Ok(ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)))
                     }
                     (ExprResult::Value(left), ExprResult::Value(right)) => {
-                        let left = left.to_string();
                         Ok(ExprResult::BinaryOp(
-                            ("".to_owned(), Box::new(|f| FileColumn::Name(Some(OsString::from(left))))), 
+                            ("".to_owned(), Box::new(move |f| FileColumn::Name(Some(OsString::from(left.to_string()))))), 
                             op, 
-                            ("".to_owned(), Box::new(|f| FileColumn::Name(Some(OsString::from(right.clone().to_string())))))
+                            ("".to_owned(), Box::new(move |f| FileColumn::Name(Some(OsString::from(right.to_string())))))
                         ))
                     }
                     _ => { unimplemented!() }
@@ -259,12 +277,13 @@ fn consume_expr(expr: Expr, tables: Option<&mut HashMap<String, Vec<CoreFile>>>)
 }
 
 fn consume_expr_ident(ident: Ident) -> Result<ExprResult, CoreError> {    
-    match FileColumn::from_str(ident.value.as_str()) {
-        Ok(column) => { Ok(ExprResult::Select(Box::new(move |c| c.column(&column)))) }
-        Err(e) => { Err(CoreError::from(e)) }
-    }
+    let file_column = FileColumn::from_str(ident.value.as_str())?;
+    Ok(ExprResult::Select(Box::new(move |c| c.column(&file_column))))
 }
 
+/**
+ * Consumes and executes a SQL operation
+**/
 fn consume_op(left: Value, op: &BinaryOperator, right: Value) -> Result<Value, CoreError> {
     println!("op: {{ left: {:?}, right: {:?} }}", left, right);
     match op {

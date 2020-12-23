@@ -2,7 +2,7 @@ use std::{cmp::Ordering, error::Error, ffi::OsString, time::SystemTime, fmt::{De
 use sqlparser::{parser::ParserError, ast::Query};
 use serde::{Serialize, ser::SerializeStruct, Serializer};
 use strum::{AsStaticRef, IntoEnumIterator};
-use super::file::file_type::FileType;
+use super::{error::CoreError, file::file_type::FileType};
 
 pub trait FileColumnValue {
     fn column(&self, column: &FileColumn) -> FileColumn;
@@ -38,7 +38,7 @@ impl FileColumn {
 }
 
 impl FromStr for FileColumn {
-    type Err = ();
+    type Err = CoreError;
 
     fn from_str(input: &str) -> Result<FileColumn, Self::Err> {
         let str: &str = &input.to_ascii_lowercase();
@@ -49,7 +49,7 @@ impl FromStr for FileColumn {
             "file_extension" | "fileextension" => Ok(FileColumn::FileExtension(None)),
             "size" => Ok(FileColumn::Size(None)),
             "absolutepath" | "absolute_path" => Ok(FileColumn::AbsolutePath(None)),
-            _ => Err(()),
+            _ => Err(CoreError::GeneralError(format!("No type matching {} was found", str))),
         }
     }
 }
