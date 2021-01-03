@@ -9,7 +9,7 @@ pub enum ExprResult {
     CompoundSelect(/*table_name*/ String, /*selector*/ Box<dyn Fn(&CoreFile) -> FileColumn>),
     Select(/*selector*/ Box<dyn Fn(&CoreFile) -> FileColumn>),
     Value(ast::Value),
-    /* TODO: The Strings should be optional if the comparee is an ast::Value */
+    /* FIXME! The Strings should be optional if the comparee is an ast::Value */
     BinaryOp((/*table_name*/ String, /*selector*/ Box<dyn Fn(&CoreFile) -> FileColumn>), /*comparer*/ ast::BinaryOperator, (/*table_name*/ String, /*selector*/ Box<dyn Fn(&CoreFile) -> FileColumn>))
 }
 

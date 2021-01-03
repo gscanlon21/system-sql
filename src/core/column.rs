@@ -28,7 +28,7 @@ pub enum FileColumn {
     FileExtension(Option<OsString>),
     Size(Option<u64>),
     AbsolutePath(Option<PathBuf>),
-    Created(Option<SystemTime>)
+    Created(Option<SystemTime>) // Switch SystemTime out with something more human display oriented
 }
 
 impl FileColumn {
@@ -80,7 +80,15 @@ impl std::ops::Add for FileColumn {
 
 impl fmt::Display for FileColumn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(self, f)
+        write!(f, "{}", match self {
+            FileColumn::Null => { "NULL".to_owned() }
+            FileColumn::Name(name) => { name.clone().unwrap_or_default().to_str().unwrap_or_default().to_owned() }
+            FileColumn::Path(path) => { path.clone().unwrap_or_default().to_str().unwrap_or_default().to_owned() }
+            FileColumn::Type(typ) => { typ.clone().unwrap_or(FileType::File /* Give this type a default impl */).to_string() }
+            FileColumn::FileExtension(ext) => { ext.clone().unwrap_or_default().to_str().unwrap_or_default().to_owned() }
+            FileColumn::Size(size) => { size.unwrap_or_default().to_string() }
+            FileColumn::AbsolutePath(path) => { path.clone().unwrap_or_default().to_str().unwrap_or_default().to_owned() }
+            FileColumn::Created(created) => { "TODO".to_owned() }
+        })
     }
 }
-

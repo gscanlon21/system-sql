@@ -38,20 +38,28 @@ pub fn consume_statement(statement: Statement) -> Result<(), CoreError> {
             Ok(())
         }
         // INSERT INTO name ...
+        // table_name is the table being inserted into
+        // columns are the columns to insert defined in paranthesis after the table_name (simple idents)
+        // source is the query to pull data for the insert from
         Statement::Insert { table_name, columns, source } => {
             let mut files = consume_query(*source)?;
 
-            // FIXME: When no columns are passed in we should use the default table columns
-            let columns: Vec<FileColumn> = columns.into_iter().filter_map(|c|
-                FileColumn::from_str(c.value.as_str()).ok()
-            ).collect();
+            println!("Columns are {:#?}", columns);
+            println!("Files:\n{:#?}", files);
 
-            files = files.into_iter().map(|row| row.into_iter().filter(|column| 
-                // FIXME: not currently checking the table name, * symbol
-                columns.iter().any(|c| std::mem::discriminant(c) == std::mem::discriminant(column))).collect()
+            let columns: Vec<FileColumn> = if columns.len() > 0 {
+                columns.into_iter().map(|c|
+                    FileColumn::from_str(c.value.as_str()).expect(format!("No such column {} was found", c.value).as_str())
+                ).collect()
+            } else {
+                FileColumn::iter().collect()
+            };
+
+            let column_cmp = |a: &FileColumn, b: &FileColumn| std::mem::discriminant(a) == std::mem::discriminant(b);
+            files = files.into_iter().map(|row| row.into_iter().filter(|column|
+                columns.iter().any(|c| column_cmp(c, column))).collect::<Vec<FileColumn>>()
             ).collect::<Vec<Vec<FileColumn>>>();
-            //println!("Files:\n{:#?}", files);
-
+            
             if let Some(table_name) = table_name.0.first() {
                 match table_name.value.chars().rev().take_while(|c| *c != '.').collect::<String>().as_str() {
                     "vsc" => { write_csv(columns, files, &table_name.value)? }
@@ -107,12 +115,18 @@ pub fn consume_query(query: Query) -> Result<Vec<Vec<FileColumn>>, CoreError> {
  * Consumes and executes a SQL select statement
 **/
 fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
+    let mut hash_map: HashMap</*table name*/ String, /*row*/ Vec<CoreFile>> = HashMap::new();
+    let mut result_columns: /*rows*/ Vec</*columns*/ Vec<FileColumn>> = Vec::new();
+    let select_projection = select.projection;
+
     for table_with_join in select.from {
         // Load the table's files into memory
         let (table_name, files) = consume_relation(table_with_join.relation)?;
-        let mut hash_map: HashMap<String, /*row*/ Vec<CoreFile>> = [(table_name, files.clone())].iter().cloned().collect();
+
+        hash_map.insert(table_name, files.clone());
         //println!("hash map{:#?}", hash_map);
-        let mut result_columns: /*rows*/ Vec</*columns*/ Vec<FileColumn>> = hash_map.clone().into_iter().flat_map(|f| 
+
+        result_columns = hash_map.clone().into_iter().flat_map(|f| 
             f.1.clone().iter().map(|cf| cf.columns()).collect::<Vec<Vec<FileColumn>>>()
         ).collect::<Vec<Vec<FileColumn>>>();
         //println!("{:#?}", result_columns);
@@ -157,7 +171,6 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
                             match expr_result {
                                 ExprResult::BinaryOp((left_table_name, left), op, (right_table_name, right)) => {
                                     let join_result = enumerable::left_join(files.clone(), join_files, left, right, Box::new(|f: CoreFile, jf: Option<CoreFile>| vec![Some(f), jf]));
-                                    //println!("join_resultt: {:#?}", join_result);
                                     
                                     hash_map.remove(&left_table_name);
                                     hash_map.remove(&right_table_name);
@@ -182,8 +195,9 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
         }
 
         if select.distinct {
+            todo!()
             //result_columns.sort();
-            result_columns.dedup()
+            //result_columns.dedup()
         }
 
         if let Some(ref top) = select.top  {
@@ -206,27 +220,50 @@ fn consume_select(select: Select) -> Result<Vec<Vec<FileColumn>>, CoreError> {
             }
         }
 
-        for projection in select.projection {
-            //consume_select_item(projction);
-        }
-
-        return Ok(result_columns)
+        // This is a very quick and dirty implmentation down for limiting the data set to our selected columns
+        // It will fail on joined tables or compound identifiers
+        result_columns = result_columns.into_iter().map(|row|
+            // row = [Name(Some("Cargo.lock",),),Path(Some("./Cargo.lock",),),Type(Some(File,),),FileExtension(Some("lock",),),Size(Some(5500,),),Path(Some("./Cargo.lock",),),Created(Some(SystemTime{intervals: 132534735133613130,},),),],
+            row.into_iter().filter(|col| 
+                // col = Name(Some("Cargo.lock",),)
+                select_projection.iter().any(|p | { match_select_item(col.clone(), p) })
+            ).collect::<Vec<FileColumn>>()
+        ).collect::<Vec<Vec<FileColumn>>>();        
     }
 
-
     for group in select.group_by {
-
+        todo!()
     }
 
     if let Some(seelction) = select.selection {
-
+        todo!()
     }
 
     if let Some(having) = select.having {
-
+        todo!()
     }
 
-    return Err(CoreError::from("There's nothing here!"));
+    return Ok(result_columns);
+}
+
+fn match_select_item(column: FileColumn /* The file's column that is checked if it is contained in the SELECT list */, projection: &SelectItem /* One item following SELECT (sa. files.name) */) -> bool {
+    match projection {
+        SelectItem::UnnamedExpr(expr) => { 
+            match expr {
+                Expr::Identifier(ident) => { 
+                    // Match the type of the projection with the type of the file column // Should incorporate something like this into the FileColumn type
+                    std::mem::discriminant(&FileColumn::from_str(&ident.value).unwrap()) == std::mem::discriminant(&column) 
+                }
+                Expr::Wildcard => { true }
+                Expr::QualifiedWildcard(idents) => { todo!() }
+                Expr::CompoundIdentifier(idents) => { todo!() }
+                _ => unimplemented!()
+            }    
+        }
+        SelectItem::ExprWithAlias { expr, alias } => { todo!() }
+        SelectItem::QualifiedWildcard(_) => { todo!() }
+        SelectItem::Wildcard => { true }
+    }
 }
 
 /**
@@ -403,7 +440,7 @@ mod tests {
     fn consume_table_name() {
         let files = super::consume_table_name(PATH_TO_TEST_DIR);
 
-        assert_eq!(files.expect("Directory is readable").len(), 1);
+        assert_eq!(files.expect("Directory is readable").len(), 3);
     }
 
     // #[test]

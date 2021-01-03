@@ -42,21 +42,3 @@ fn main() {
         }
     });
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn parses_file_path_table_names() {
-        // let sql = "SELECT * FROM [./]";
-        // super::parse_sql(sql).unwrap();
-
-        // let sql = "SELECT * FROM [./../]";
-        // super::parse_sql(sql).unwrap();
-
-        // let sql = "SELECT * FROM [.]";
-        // super::parse_sql(sql).unwrap();
-
-        // let sql = "SELECT * FROM [/]";
-        // super::parse_sql(sql).unwrap();
-    }
-}

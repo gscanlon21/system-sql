@@ -8,25 +8,24 @@ use std::vec;
 use std::path::Path;
 use crate::core::{column::*, error::CoreError, file::*};
 use serde_json::{json, to_string};
+use strum::AsStaticRef;
 
 pub fn write_csv(columns: Vec<FileColumn>, files: Vec<Vec<FileColumn>>, file_path: &String) -> Result<(), CoreError> {
-    println!("{:#?}", columns);
-    
+    // FIXME! Ordering of columns and values     
     let mut wtr = csv::Writer::from_path(file_path)?;
                     
-    wtr.write_record(columns.iter().map(|c| c.to_string()))?;
+    wtr.write_record(columns.iter().map(|c| c.as_static()))?;
 
     for rows in files {
         let mut cells: Vec<String> = Vec::new();
-        for file in rows {
-            cells.push(file.to_string());
+        for col in rows {
+            cells.push(col.to_string());
         }
 
         while cells.len() < columns.len() {
             cells.push(String::from(""));
         }
         
-        println!("cells: {:#?}", cells.clone());
         wtr.write_record(cells)?;
     }
 
@@ -37,6 +36,8 @@ pub fn write_csv(columns: Vec<FileColumn>, files: Vec<Vec<FileColumn>>, file_pat
 
 pub fn write_json(columns: Vec<FileColumn>, files: Vec<Vec<FileColumn>>, file_path: &String)  -> Result<(), CoreError> {
     let json = json!(files);
+
+    // TODO! Write json to a file
     print!("{}", json);
 
     Ok(())
