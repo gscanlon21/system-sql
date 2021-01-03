@@ -1,3 +1,5 @@
+-- Does not work currently
+
 UPDATE files
 SET Name = dir.CreatedDate
 FROM [./] files

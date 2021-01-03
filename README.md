@@ -1,29 +1,11 @@
+#### <span style="color:orange">Very much a work in progress, many features are incomplete or do not work, with frequent breaking changes</span>
+
+# SystemSQL 
+
+### A command line utility that allows you to apply SQL commands to your native file system
+
+&nbsp;
+
 ## Usage
 
-Query current directory
-```bash
-cargo run "SELECT * FROM [./]"
-```
-
-Query column names
-```bash
-cargo run "SELECT TOP 0 * FROM [./]"
-```
-
-
-Save results to a CSV
-```bash
- cargo run "INSERT INTO [temp.csv] SELECT * FROM [./]"
-```
-
-Save results as JSON
-```bash
- cargo run "INSERT INTO [temp.json] SELECT * FROM [./]"
-```
-
-
-Pipe results as JSON
-```bash
- cargo run "INSERT INTO [json] SELECT * FROM [./]"
-```
-
+See [here](docs/examples)
