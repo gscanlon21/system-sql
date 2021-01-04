@@ -1,0 +1,32 @@
+name: CI
+
+on: [push]
+
+jobs:
+  check:
+    name: Check & Test
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout Latest
+      - name: Checkout Latest
+        uses: actions/checkout@v2
+
+      # Install the Rust Toolchain
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: stable
+            override: true
+
+      # Check the Binary
+      - name: Check Binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+      # Run Tests
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
