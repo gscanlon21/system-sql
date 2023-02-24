@@ -2,11 +2,14 @@ use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*; // Used for writing assertions
 use std::process::Command; // Run programs
 
+// TODO! Move these to a shared module
 const PATH_TO_TEST_DIR: &str = "./test/";
 const PROGRAM_NAME: &str = "systemsql";
 
 #[test]
 fn select_name() -> Result<(), Box<dyn std::error::Error>> {
+    // TODO! Use tempfile crate to handle test files
+
     let sql = format!("SELECT Name FROM [{test_dir}]", test_dir = PATH_TO_TEST_DIR).to_owned();
 
     let mut cmd = Command::cargo_bin(PROGRAM_NAME)?;
